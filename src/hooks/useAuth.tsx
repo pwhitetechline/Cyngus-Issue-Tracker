@@ -9,6 +9,7 @@ import {
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 import { User, UserRole } from '../types';
+import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
@@ -66,7 +67,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signIn = async () => {
     const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error: any) {
+      console.error('Sign in error:', error);
+      // Check for unauthorized domain error
+      if (error.code === 'auth/unauthorized-domain') {
+        toast.error('Domain not authorized', {
+          description: `Please add "${window.location.hostname}" to your Firebase Console > Authentication > Settings > Authorized domains.`,
+          duration: 10000,
+        });
+      } else {
+        toast.error('Sign in failed', {
+          description: error.message || 'Please check your console for details.',
+        });
+      }
+    }
   };
 
   const logout = async () => {

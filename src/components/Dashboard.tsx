@@ -1,4 +1,5 @@
 import { useIssues } from '../hooks/useIssues';
+import { useUsers } from '../hooks/useUsers';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { 
   Bug, 
@@ -19,7 +20,10 @@ interface DashboardProps {
 }
 
 export function Dashboard({ onIssueClick }: DashboardProps) {
-  const { issues, loading } = useIssues();
+  const { issues, loading: issuesLoading } = useIssues();
+  const { users, loading: usersLoading } = useUsers();
+
+  const loading = issuesLoading || usersLoading;
 
   const stats = {
     total: issues.length,
@@ -118,10 +122,22 @@ export function Dashboard({ onIssueClick }: DashboardProps) {
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-6">
-              <WorkloadItem name="Sarah Jenkins" count={12} total={20} color="bg-blue-500" />
-              <WorkloadItem name="Michael Chen" count={8} total={20} color="bg-amber-500" />
-              <WorkloadItem name="Alex Rivera" count={15} total={20} color="bg-red-500" />
-              <WorkloadItem name="Emma Wilson" count={4} total={20} color="bg-emerald-500" />
+              {users.filter(u => u.role === 'ASSIGNEE' || u.role === 'ADMIN').slice(0, 5).map((user, idx) => {
+                const activeIssues = issues.filter(i => i.assigneeId === user.uid && i.status !== 'RESOLVED' && i.status !== 'CLOSED').length;
+                const colors = ['bg-blue-500', 'bg-amber-500', 'bg-red-500', 'bg-emerald-500', 'bg-purple-500'];
+                return (
+                  <WorkloadItem 
+                    key={user.uid} 
+                    name={user.displayName} 
+                    count={activeIssues} 
+                    total={Math.max(activeIssues, 10)} 
+                    color={colors[idx % colors.length]} 
+                  />
+                );
+              })}
+              {users.filter(u => u.role === 'ASSIGNEE' || u.role === 'ADMIN').length === 0 && (
+                <p className="text-sm text-slate-400 text-center py-4 italic">No active assignees found.</p>
+              )}
             </div>
             
             <div className="mt-8 p-4 bg-slate-50 rounded-xl border border-slate-100">
