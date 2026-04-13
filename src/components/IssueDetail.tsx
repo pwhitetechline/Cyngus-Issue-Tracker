@@ -48,6 +48,7 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../hooks/useAuth';
+import { useNotifications } from '../hooks/useNotifications';
 import { 
   collection, 
   addDoc,
@@ -77,6 +78,7 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
   const { users } = useUsers();
   const { updateIssue, deleteIssue } = useIssueActions();
   const { user, isAdmin } = useAuth();
+  const { createNotification } = useNotifications();
   const [comments, setComments] = useState<Comment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
@@ -116,6 +118,30 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
     try {
       await updateIssue(issueId, { status });
       toast.success(`Status updated to ${status.replace('_', ' ')}`);
+
+      if (issue) {
+        // Notify reporter if status changed by someone else
+        if (issue.reporterId !== user?.uid) {
+          await createNotification({
+            userId: issue.reporterId,
+            title: 'Issue Status Updated',
+            message: `The status of your issue "${issue.title}" has been changed to ${status.replace('_', ' ')}.`,
+            link: `/issues/${issueId}`,
+            type: 'STATUS_CHANGED'
+          });
+        }
+        
+        // Notify assignee if status changed by someone else
+        if (issue.assigneeId && issue.assigneeId !== user?.uid && issue.assigneeId !== issue.reporterId) {
+          await createNotification({
+            userId: issue.assigneeId,
+            title: 'Issue Status Updated',
+            message: `The status of the issue "${issue.title}" assigned to you has been changed to ${status.replace('_', ' ')}.`,
+            link: `/issues/${issueId}`,
+            type: 'STATUS_CHANGED'
+          });
+        }
+      }
     } catch (error) {
       toast.error('Failed to update status');
     }
@@ -134,6 +160,16 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
     try {
       await updateIssue(issueId, { assigneeId });
       toast.success(assigneeId ? 'Assignee updated' : 'Issue unassigned');
+
+      if (issue && assigneeId && assigneeId !== user?.uid) {
+        await createNotification({
+          userId: assigneeId,
+          title: 'New Issue Assigned',
+          message: `You have been assigned to the issue: "${issue.title}"`,
+          link: `/issues/${issueId}`,
+          type: 'ISSUE_ASSIGNED'
+        });
+      }
     } catch (error) {
       toast.error('Failed to update assignee');
     }
@@ -168,6 +204,30 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
       });
       setNewComment('');
       toast.success('Comment added');
+
+      if (issue) {
+        // Notify reporter
+        if (issue.reporterId !== user?.uid) {
+          await createNotification({
+            userId: issue.reporterId,
+            title: 'New Comment',
+            message: `${user?.displayName} commented on your issue: "${issue.title}"`,
+            link: `/issues/${issueId}`,
+            type: 'COMMENT_ADDED'
+          });
+        }
+        
+        // Notify assignee
+        if (issue.assigneeId && issue.assigneeId !== user?.uid && issue.assigneeId !== issue.reporterId) {
+          await createNotification({
+            userId: issue.assigneeId,
+            title: 'New Comment',
+            message: `${user?.displayName} commented on an issue assigned to you: "${issue.title}"`,
+            link: `/issues/${issueId}`,
+            type: 'COMMENT_ADDED'
+          });
+        }
+      }
     } catch (error) {
       toast.error('Failed to add comment');
     } finally {

@@ -1,4 +1,6 @@
 import { useAuth } from '../hooks/useAuth';
+import { useNotifications } from '../hooks/useNotifications';
+import { formatDistanceToNow } from 'date-fns';
 import { Button } from './ui/button';
 import { 
   LayoutDashboard, 
@@ -10,7 +12,11 @@ import {
   Bug, 
   Search,
   Bell,
-  Users
+  Users,
+  CheckCircle2,
+  MessageSquare,
+  UserPlus,
+  RefreshCw
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '../lib/utils';
@@ -35,6 +41,7 @@ interface LayoutProps {
 
 export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
   const { user, logout, isAdmin } = useAuth();
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
 
   const navItems = [
@@ -109,13 +116,97 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
 
           <div className="flex items-center gap-4">
             <ThemeToggle />
-            <Button variant="ghost" size="icon" className="text-muted-foreground relative">
-              <Bell className="w-5 h-5" />
-              <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-background" />
-            </Button>
             
             <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-3 hover:bg-accent p-1 rounded-full transition-colors outline-none">
+              <DropdownMenuTrigger render={
+                <Button variant="ghost" size="icon" className="text-muted-foreground relative">
+                  <Bell className="w-5 h-5" />
+                  {unreadCount > 0 && (
+                    <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-background" />
+                  )}
+                </Button>
+              } />
+              <DropdownMenuContent align="end" className="w-80 p-0">
+                <DropdownMenuGroup>
+                  <div className="p-4 border-b border-border flex items-center justify-between">
+                    <DropdownMenuLabel className="p-0 font-bold">Notifications</DropdownMenuLabel>
+                    {unreadCount > 0 && (
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={(e) => {
+                          e.preventDefault();
+                          markAllAsRead();
+                        }}
+                        className="text-xs h-7 px-2 text-primary hover:text-primary"
+                      >
+                        Mark all as read
+                      </Button>
+                    )}
+                  </div>
+                </DropdownMenuGroup>
+                <div className="max-h-[400px] overflow-y-auto">
+                  {notifications.length === 0 ? (
+                    <div className="p-8 text-center text-muted-foreground text-sm italic">
+                      No notifications yet
+                    </div>
+                  ) : (
+                    <div className="flex flex-col">
+                      {notifications.map((notification) => (
+                        <DropdownMenuItem 
+                          key={notification.id}
+                          onClick={() => notification.id && markAsRead(notification.id)}
+                          className={cn(
+                            "p-4 flex flex-col items-start gap-1 cursor-pointer border-b border-border/50 last:border-0",
+                            !notification.read && "bg-primary/5"
+                          )}
+                        >
+                          <div className="flex items-center gap-2 w-full">
+                            <div className={cn(
+                              "p-1.5 rounded-full",
+                              notification.type === 'ISSUE_ASSIGNED' && "bg-blue-500/10 text-blue-500",
+                              notification.type === 'COMMENT_ADDED' && "bg-green-500/10 text-green-500",
+                              notification.type === 'STATUS_CHANGED' && "bg-amber-500/10 text-amber-500",
+                              !notification.type && "bg-primary/10 text-primary"
+                            )}>
+                              {notification.type === 'ISSUE_ASSIGNED' && <UserPlus className="w-3 h-3" />}
+                              {notification.type === 'COMMENT_ADDED' && <MessageSquare className="w-3 h-3" />}
+                              {notification.type === 'STATUS_CHANGED' && <RefreshCw className="w-3 h-3" />}
+                              {!notification.type && <Bell className="w-3 h-3" />}
+                            </div>
+                            <span className={cn(
+                              "text-sm text-foreground",
+                              !notification.read ? "font-bold" : "font-medium"
+                            )}>
+                              {notification.title}
+                            </span>
+                            {!notification.read && (
+                              <div className="w-1.5 h-1.5 bg-primary rounded-full ml-auto" />
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground line-clamp-2 pl-7">
+                            {notification.message}
+                          </p>
+                          <span className="text-[10px] text-muted-foreground/60 pl-7 mt-1">
+                            {notification.createdAt?.toDate ? formatDistanceToNow(notification.createdAt.toDate()) : 'just now'} ago
+                          </span>
+                        </DropdownMenuItem>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <DropdownMenuSeparator />
+                <div className="p-2">
+                  <Button variant="ghost" className="w-full text-xs h-8 text-muted-foreground">
+                    View all notifications
+                  </Button>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <div className="flex items-center gap-3 pl-4 border-l border-border">
+              <DropdownMenu>
+                <DropdownMenuTrigger className="flex items-center gap-3 hover:bg-accent p-1 rounded-full transition-colors outline-none">
                 <Avatar className="w-8 h-8 border border-border">
                   <AvatarImage src={user?.photoURL} />
                   <AvatarFallback>{user?.displayName?.charAt(0)}</AvatarFallback>
@@ -144,7 +235,8 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
-        </header>
+        </div>
+      </header>
 
         {/* Page Content */}
         <div className="flex-1 overflow-y-auto p-8">

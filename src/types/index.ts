@@ -68,3 +68,16 @@ export const AuditLogSchema = z.object({
 });
 
 export type AuditLog = z.infer<typeof AuditLogSchema>;
+
+export const NotificationSchema = z.object({
+  id: z.string().optional(),
+  userId: z.string(),
+  title: z.string(),
+  message: z.string(),
+  link: z.string().optional(),
+  read: z.boolean().default(false),
+  type: z.enum(['ISSUE_ASSIGNED', 'COMMENT_ADDED', 'STATUS_CHANGED', 'MENTION']).optional(),
+  createdAt: z.any().optional(),
+});
+
+export type Notification = z.infer<typeof NotificationSchema>;

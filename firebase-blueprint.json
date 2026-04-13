@@ -72,6 +72,22 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["issueId", "userId", "action", "timestamp"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A notification for a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "link": { "type": "string" },
+        "read": { "type": "boolean" },
+        "type": { "type": "string", "enum": ["ISSUE_ASSIGNED", "COMMENT_ADDED", "STATUS_CHANGED", "MENTION"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["userId", "title", "message", "read", "createdAt"]
     }
   },
   "firestore": {
@@ -90,6 +106,10 @@
     "/auditLogs/{logId}": {
       "schema": "AuditLog",
       "description": "System-wide audit logs"
+    },
+    "/notifications/{notificationId}": {
+      "schema": "Notification",
+      "description": "User notifications"
     }
   }
 }
