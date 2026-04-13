@@ -1,5 +1,6 @@
 import { useIssues } from '../hooks/useIssues';
 import { useUsers } from '../hooks/useUsers';
+import { useAuth } from '../hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { 
   Bug, 
@@ -22,6 +23,7 @@ interface DashboardProps {
 export function Dashboard({ onIssueClick }: DashboardProps) {
   const { issues, loading: issuesLoading } = useIssues();
   const { users, loading: usersLoading } = useUsers();
+  const { user } = useAuth();
 
   const loading = issuesLoading || usersLoading;
 
@@ -32,6 +34,20 @@ export function Dashboard({ onIssueClick }: DashboardProps) {
     resolved: issues.filter(i => i.status === 'RESOLVED').length,
     critical: issues.filter(i => i.priority === 'CRITICAL').length,
   };
+
+  const lastWeek = new Date();
+  lastWeek.setDate(lastWeek.getDate() - 7);
+  
+  const newIssuesLastWeek = issues.filter(i => {
+    const createdAt = i.createdAt?.toDate ? i.createdAt.toDate() : new Date();
+    return createdAt > lastWeek;
+  }).length;
+
+  const myIssues = issues.filter(i => i.assigneeId === user?.uid && i.status !== 'RESOLVED' && i.status !== 'CLOSED').length;
+  
+  const resolutionRate = stats.total > 0 ? Math.round((stats.resolved / stats.total) * 100) : 0;
+  
+  const openCritical = issues.filter(i => i.priority === 'CRITICAL' && i.status !== 'RESOLVED' && i.status !== 'CLOSED').length;
 
   const recentIssues = issues.slice(0, 5);
 
@@ -63,28 +79,28 @@ export function Dashboard({ onIssueClick }: DashboardProps) {
           value={stats.total} 
           icon={<Bug className="w-5 h-5 text-blue-600" />} 
           color="bg-blue-50" 
-          trend="+12% from last week"
+          trend={`${newIssuesLastWeek} new this week`}
         />
         <StatCard 
           title="In Progress" 
           value={stats.inProgress} 
           icon={<Clock className="w-5 h-5 text-amber-600" />} 
           color="bg-amber-50" 
-          trend="5 assigned to you"
+          trend={`${myIssues} assigned to you`}
         />
         <StatCard 
           title="Resolved" 
           value={stats.resolved} 
           icon={<CheckCircle2 className="w-5 h-5 text-emerald-600" />} 
           color="bg-emerald-50" 
-          trend="85% success rate"
+          trend={`${resolutionRate}% resolution rate`}
         />
         <StatCard 
           title="Critical" 
           value={stats.critical} 
           icon={<AlertCircle className="w-5 h-5 text-red-600" />} 
           color="bg-red-50" 
-          trend="Immediate action required"
+          trend={openCritical > 0 ? `${openCritical} require action` : 'All clear'}
         />
       </div>
 
