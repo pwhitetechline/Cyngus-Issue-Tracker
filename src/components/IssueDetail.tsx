@@ -380,10 +380,8 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                   </div>
                   
                   <DropdownMenu>
-                    <DropdownMenuTrigger>
-                      <Button variant="ghost" size="sm" className="ml-auto text-primary text-xs font-bold">
-                        {assignee ? 'Change' : 'Assign'}
-                      </Button>
+                    <DropdownMenuTrigger render={<Button variant="ghost" size="sm" className="ml-auto text-primary text-xs font-bold" />}>
+                      {assignee ? 'Change' : 'Assign'}
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
                       <DropdownMenuItem onClick={() => handleAssigneeChange(null)} className="text-slate-500">
