@@ -108,9 +108,9 @@ export function IssueForm({ onSuccess }: IssueFormProps) {
 
   return (
     <div className="max-w-3xl mx-auto">
-      <Card className="border-slate-200 shadow-lg">
-        <CardHeader className="border-b border-slate-100 pb-6">
-          <CardTitle className="text-2xl font-bold text-slate-900">Report New Issue</CardTitle>
+      <Card className="border-border shadow-lg">
+        <CardHeader className="border-b border-border/50 pb-6">
+          <CardTitle className="text-2xl font-bold text-foreground">Report New Issue</CardTitle>
           <CardDescription>
             Provide as much detail as possible to help the team resolve this quickly.
           </CardDescription>
@@ -118,25 +118,25 @@ export function IssueForm({ onSuccess }: IssueFormProps) {
         <CardContent className="p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="title" className="text-sm font-semibold text-slate-700">Issue Title</Label>
+              <Label htmlFor="title" className="text-sm font-semibold text-foreground">Issue Title</Label>
               <Input 
                 id="title"
                 placeholder="e.g., Login button not responding on mobile"
                 value={formData.title}
                 onChange={e => setFormData({ ...formData, title: e.target.value })}
-                className="h-12 border-slate-200 focus:ring-primary"
+                className="h-12 border-border focus:ring-primary"
                 required
               />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <Label htmlFor="type" className="text-sm font-semibold text-slate-700">Issue Type</Label>
+                <Label htmlFor="type" className="text-sm font-semibold text-foreground">Issue Type</Label>
                 <Select 
                   value={formData.type} 
                   onValueChange={v => setFormData({ ...formData, type: v as IssueType })}
                 >
-                  <SelectTrigger className="h-12 border-slate-200">
+                  <SelectTrigger className="h-12 border-border">
                     <SelectValue placeholder="Select type" />
                   </SelectTrigger>
                   <SelectContent>
@@ -148,12 +148,12 @@ export function IssueForm({ onSuccess }: IssueFormProps) {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="priority" className="text-sm font-semibold text-slate-700">Priority Level</Label>
+                <Label htmlFor="priority" className="text-sm font-semibold text-foreground">Priority Level</Label>
                 <Select 
                   value={formData.priority} 
                   onValueChange={v => setFormData({ ...formData, priority: v as IssuePriority })}
                 >
-                  <SelectTrigger className="h-12 border-slate-200">
+                  <SelectTrigger className="h-12 border-border">
                     <SelectValue placeholder="Select priority" />
                   </SelectTrigger>
                   <SelectContent>
@@ -167,26 +167,26 @@ export function IssueForm({ onSuccess }: IssueFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="description" className="text-sm font-semibold text-slate-700">Detailed Description</Label>
+              <Label htmlFor="description" className="text-sm font-semibold text-foreground">Detailed Description</Label>
               <Textarea 
                 id="description"
                 placeholder="Describe the issue, steps to reproduce, and expected behavior..."
                 value={formData.description}
                 onChange={e => setFormData({ ...formData, description: e.target.value })}
-                className="min-h-[200px] border-slate-200 focus:ring-primary resize-none"
+                className="min-h-[200px] border-border focus:ring-primary resize-none"
                 required
               />
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700">Labels & Tags</Label>
+              <Label className="text-sm font-semibold text-foreground">Labels & Tags</Label>
               <div className="flex gap-2">
                 <Input 
                   placeholder="Add a label..."
                   value={labelInput}
                   onChange={e => setLabelInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), addLabel())}
-                  className="h-10 border-slate-200"
+                  className="h-10 border-border"
                 />
                 <Button type="button" variant="outline" onClick={addLabel} className="h-10">
                   <Plus className="w-4 h-4" />
@@ -196,7 +196,7 @@ export function IssueForm({ onSuccess }: IssueFormProps) {
                 {labels.map(label => (
                   <Badge key={label} variant="secondary" className="pl-2 pr-1 py-1 gap-1 bg-primary/10 text-primary border-primary/20">
                     {label}
-                    <button type="button" onClick={() => removeLabel(label)} className="hover:text-red-500 transition-colors">
+                    <button type="button" onClick={() => removeLabel(label)} className="hover:text-destructive transition-colors">
                       <X className="w-3 h-3" />
                     </button>
                   </Badge>
@@ -205,9 +205,9 @@ export function IssueForm({ onSuccess }: IssueFormProps) {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-sm font-semibold text-slate-700">Screenshots & Attachments</Label>
+              <Label className="text-sm font-semibold text-foreground">Screenshots & Attachments</Label>
               <div 
-                className="border-2 border-dashed border-slate-200 rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer bg-slate-50/50 group"
+                className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer bg-muted/50 group"
                 onClick={() => document.getElementById('file-upload')?.click()}
               >
                 <input 
@@ -219,29 +219,29 @@ export function IssueForm({ onSuccess }: IssueFormProps) {
                   accept="image/*,.pdf,.doc,.docx"
                 />
                 <div className="flex flex-col items-center gap-2">
-                  <div className="p-3 bg-white rounded-full shadow-sm group-hover:scale-110 transition-transform">
-                    <ImageIcon className="w-6 h-6 text-slate-400 group-hover:text-primary" />
+                  <div className="p-3 bg-card rounded-full shadow-sm group-hover:scale-110 transition-transform">
+                    <ImageIcon className="w-6 h-6 text-muted-foreground group-hover:text-primary" />
                   </div>
-                  <p className="text-sm font-medium text-slate-600">
+                  <p className="text-sm font-medium text-muted-foreground">
                     {uploading ? 'Uploading...' : 'Click or drag to upload screenshots'}
                   </p>
-                  <p className="text-xs text-slate-400">PNG, JPG, PDF up to 10MB</p>
+                  <p className="text-xs text-muted-foreground">PNG, JPG, PDF up to 10MB</p>
                 </div>
               </div>
 
               {attachments.length > 0 && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
                   {attachments.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg shadow-sm">
+                    <div key={index} className="flex items-center justify-between p-3 bg-card border border-border rounded-lg shadow-sm">
                       <div className="flex items-center gap-3 overflow-hidden">
-                        <Paperclip className="w-4 h-4 text-slate-400 flex-shrink-0" />
-                        <span className="text-sm text-slate-600 truncate">{file.name}</span>
+                        <Paperclip className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                        <span className="text-sm text-muted-foreground truncate">{file.name}</span>
                       </div>
                       <Button 
                         type="button" 
                         variant="ghost" 
                         size="icon" 
-                        className="h-8 w-8 text-slate-400 hover:text-red-500"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive"
                         onClick={(e) => {
                           e.stopPropagation();
                           removeAttachment(index);
@@ -255,7 +255,7 @@ export function IssueForm({ onSuccess }: IssueFormProps) {
               )}
             </div>
 
-            <div className="pt-6 border-t border-slate-100 flex justify-end gap-4">
+            <div className="pt-6 border-t border-border/50 flex justify-end gap-4">
               <Button type="button" variant="ghost" onClick={onSuccess}>Cancel</Button>
               <Button type="submit" disabled={loading} className="px-8 h-12">
                 {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}

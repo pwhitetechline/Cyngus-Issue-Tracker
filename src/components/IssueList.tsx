@@ -39,11 +39,11 @@ export function IssueList({ onIssueClick }: IssueListProps) {
     <div className="space-y-8 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex flex-col gap-2">
-          <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Issue Explorer</h1>
-          <p className="text-slate-500">Search, filter, and manage all reported issues across the organization.</p>
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">Issue Explorer</h1>
+          <p className="text-muted-foreground">Search, filter, and manage all reported issues across the organization.</p>
         </div>
         
-        <div className="flex items-center gap-2 bg-white p-1 rounded-lg border border-slate-200 shadow-sm">
+        <div className="flex items-center gap-2 bg-card p-1 rounded-lg border border-border shadow-sm">
           <Button 
             variant={viewMode === 'grid' ? 'secondary' : 'ghost'} 
             size="sm" 
@@ -64,21 +64,21 @@ export function IssueList({ onIssueClick }: IssueListProps) {
       </div>
 
       {/* Filters Bar */}
-      <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-4">
+      <div className="bg-card p-6 rounded-xl border border-border shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input 
               placeholder="Search by title, description, or tags..." 
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-10 h-11 border-slate-200 focus:ring-primary"
+              className="pl-10 h-11 border-border focus:ring-primary"
             />
           </div>
           
           <div className="flex gap-2">
             <Select value={filters.status || 'all'} onValueChange={v => setFilters({ ...filters, status: v === 'all' ? undefined : v as IssueStatus })}>
-              <SelectTrigger className="w-[140px] h-11 border-slate-200">
+              <SelectTrigger className="w-[140px] h-11 border-border">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
               <SelectContent>
@@ -92,7 +92,7 @@ export function IssueList({ onIssueClick }: IssueListProps) {
             </Select>
 
             <Select value={filters.priority || 'all'} onValueChange={v => setFilters({ ...filters, priority: v === 'all' ? undefined : v as IssuePriority })}>
-              <SelectTrigger className="w-[140px] h-11 border-slate-200">
+              <SelectTrigger className="w-[140px] h-11 border-border">
                 <SelectValue placeholder="Priority" />
               </SelectTrigger>
               <SelectContent>
@@ -104,7 +104,7 @@ export function IssueList({ onIssueClick }: IssueListProps) {
               </SelectContent>
             </Select>
 
-            <Button variant="outline" className="h-11 border-slate-200" onClick={() => setFilters({})}>
+            <Button variant="outline" className="h-11 border-border" onClick={() => setFilters({})}>
               <SlidersHorizontal className="w-4 h-4 mr-2" />
               Reset
             </Button>
@@ -130,14 +130,14 @@ export function IssueList({ onIssueClick }: IssueListProps) {
               ))}
             </div>
           ) : (
-            <div className="bg-white py-24 text-center rounded-xl border border-slate-200 border-dashed">
+            <div className="bg-card py-24 text-center rounded-xl border border-border border-dashed">
               <div className="flex flex-col items-center gap-4">
-                <div className="p-4 bg-slate-50 rounded-full">
-                  <Filter className="w-8 h-8 text-slate-300" />
+                <div className="p-4 bg-muted/50 rounded-full">
+                  <Filter className="w-8 h-8 text-muted-foreground/50" />
                 </div>
                 <div className="space-y-1">
-                  <h3 className="text-lg font-semibold text-slate-900">No issues found</h3>
-                  <p className="text-slate-500">Try adjusting your search or filters to find what you're looking for.</p>
+                  <h3 className="text-lg font-semibold text-foreground">No issues found</h3>
+                  <p className="text-muted-foreground">Try adjusting your search or filters to find what you're looking for.</p>
                 </div>
                 <Button variant="outline" onClick={() => { setSearch(''); setFilters({}); }}>
                   Clear all filters

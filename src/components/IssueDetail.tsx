@@ -235,7 +235,7 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto pb-20">
-      <Button variant="ghost" onClick={onBack} className="mb-4 hover:bg-white">
+      <Button variant="ghost" onClick={onBack} className="mb-4 hover:bg-accent transition-colors">
         <ArrowLeft className="w-4 h-4 mr-2" />
         Back to Explorer
       </Button>
@@ -243,37 +243,37 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-8">
-          <Card className="border-slate-200 shadow-sm">
-            <CardHeader className="border-b border-slate-100 p-8">
+          <Card className="border-border shadow-sm">
+            <CardHeader className="border-b border-border/50 p-8">
               <div className="flex items-center gap-3 mb-4">
                 <Badge className="bg-primary/10 text-primary border-primary/20">{issue.type}</Badge>
-                <span className="text-sm text-slate-400 font-mono">#CYG-{issue.id?.slice(0, 8).toUpperCase()}</span>
+                <span className="text-sm text-muted-foreground font-mono">#CYG-{issue.id?.slice(0, 8).toUpperCase()}</span>
               </div>
-              <CardTitle className="text-3xl font-bold text-slate-900 tracking-tight leading-tight">
+              <CardTitle className="text-3xl font-bold text-foreground tracking-tight leading-tight">
                 {issue.title}
               </CardTitle>
               <div className="flex items-center gap-6 mt-6">
                 <div className="flex items-center gap-2">
-                  <Avatar className="w-6 h-6">
+                  <Avatar className="w-6 h-6 border border-border">
                     <AvatarImage src={reporter?.photoURL} />
                     <AvatarFallback>{(reporter?.displayName || issue.reporterId).charAt(0)}</AvatarFallback>
                   </Avatar>
-                  <span className="text-sm text-slate-600">Reporter: {reporter?.displayName || `User ${issue.reporterId.slice(0, 6)}`}</span>
+                  <span className="text-sm text-muted-foreground">Reporter: {reporter?.displayName || `User ${issue.reporterId.slice(0, 6)}`}</span>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-slate-400">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Clock className="w-4 h-4" />
                   <span>{formatDistanceToNow(createdAt)} ago</span>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-8 prose prose-slate max-w-none">
+            <CardContent className="p-8 prose prose-slate dark:prose-invert max-w-none">
               <div className="markdown-body">
                 <ReactMarkdown>{issue.description}</ReactMarkdown>
               </div>
 
               {issue.attachments && issue.attachments.length > 0 && (
-                <div className="mt-8 pt-8 border-t border-slate-100">
-                  <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wider mb-4 flex items-center gap-2">
+                <div className="mt-8 pt-8 border-t border-border/50">
+                  <h4 className="text-sm font-bold text-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
                     <Paperclip className="w-4 h-4 text-primary" />
                     Attachments ({issue.attachments.length})
                   </h4>
@@ -281,9 +281,9 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                     {issue.attachments.map((file, index) => {
                       const isImage = /\.(jpg|jpeg|png|gif|webp)$/i.test(file.name);
                       return (
-                        <div key={index} className="group relative bg-slate-50 rounded-xl border border-slate-200 overflow-hidden hover:shadow-md transition-all">
+                        <div key={index} className="group relative bg-muted/50 rounded-xl border border-border overflow-hidden hover:shadow-md transition-all">
                           {isImage ? (
-                            <div className="aspect-video w-full overflow-hidden bg-slate-200">
+                            <div className="aspect-video w-full overflow-hidden bg-muted">
                               <img 
                                 src={file.url} 
                                 alt={file.name} 
@@ -292,19 +292,19 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                               />
                             </div>
                           ) : (
-                            <div className="aspect-video w-full flex items-center justify-center bg-slate-100">
-                              <Paperclip className="w-8 h-8 text-slate-300" />
+                            <div className="aspect-video w-full flex items-center justify-center bg-muted">
+                              <Paperclip className="w-8 h-8 text-muted-foreground/50" />
                             </div>
                           )}
-                          <div className="p-3 flex items-center justify-between bg-white">
+                          <div className="p-3 flex items-center justify-between bg-card">
                             <div className="flex flex-col min-w-0">
-                              <span className="text-xs font-medium text-slate-700 truncate">{file.name}</span>
+                              <span className="text-xs font-medium text-foreground truncate">{file.name}</span>
                             </div>
                             <a 
                               href={file.url} 
                               target="_blank" 
                               rel="noopener noreferrer"
-                              className="p-1.5 bg-slate-100 rounded-md text-slate-500 hover:bg-primary hover:text-white transition-colors"
+                              className="p-1.5 bg-muted rounded-md text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
                             >
                               <ExternalLink className="w-3.5 h-3.5" />
                             </a>
@@ -319,7 +319,7 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
             {issue.labels.length > 0 && (
               <CardFooter className="px-8 pb-8 pt-0 flex flex-wrap gap-2">
                 {issue.labels.map(label => (
-                  <Badge key={label} variant="secondary" className="bg-slate-100 text-slate-600">
+                  <Badge key={label} variant="secondary" className="bg-muted text-muted-foreground">
                     {label}
                   </Badge>
                 ))}
@@ -329,7 +329,7 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
 
           {/* Comments Section */}
           <div className="space-y-6">
-            <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+            <h3 className="text-xl font-bold text-foreground flex items-center gap-2">
               <MessageSquare className="w-5 h-5 text-primary" />
               Discussion ({comments.length})
             </h3>
@@ -339,23 +339,23 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                 const commentUser = users.find(u => u.uid === comment.userId);
                 return (
                   <div key={comment.id} className="flex gap-4">
-                    <Avatar className="w-10 h-10 border border-slate-200 flex-shrink-0">
+                    <Avatar className="w-10 h-10 border border-border flex-shrink-0">
                       <AvatarImage src={commentUser?.photoURL} />
                       <AvatarFallback>{(commentUser?.displayName || comment.userId).charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <Card className="flex-1 border-slate-200 shadow-sm">
+                    <Card className="flex-1 border-border shadow-sm">
                       <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-bold text-slate-800">
+                          <span className="text-sm font-bold text-foreground">
                             {commentUser?.displayName || `User ${comment.userId.slice(0, 6)}`}
                           </span>
-                          <span className="text-xs text-slate-400">
+                          <span className="text-xs text-muted-foreground">
                             {comment.createdAt?.toDate ? formatDistanceToNow(comment.createdAt.toDate()) : 'just now'} ago
                           </span>
                         </div>
                         {(isAdmin || user?.uid === comment.userId) && (
                           <DropdownMenu>
-                            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400" />}>
+                            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" />}>
                               <MoreVertical className="w-4 h-4" />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
@@ -372,13 +372,13 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                           </DropdownMenu>
                         )}
                       </CardHeader>
-                      <CardContent className="p-4 pt-0 text-sm text-slate-600 leading-relaxed">
+                      <CardContent className="p-4 pt-0 text-sm text-muted-foreground leading-relaxed">
                         {editingCommentId === comment.id ? (
                           <div className="space-y-3">
                             <Textarea 
                               value={editContent}
                               onChange={e => setEditContent(e.target.value)}
-                              className="min-h-[100px] border-slate-200 focus:ring-primary resize-none shadow-sm"
+                              className="min-h-[100px] border-border focus:ring-primary resize-none shadow-sm"
                             />
                             <div className="flex justify-end gap-2">
                               <Button variant="ghost" size="sm" onClick={handleCancelEdit} disabled={updatingComment}>
@@ -401,7 +401,7 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
 
             {/* New Comment Form */}
             <div className="flex gap-4 pt-4">
-              <Avatar className="w-10 h-10 border border-slate-200 flex-shrink-0">
+              <Avatar className="w-10 h-10 border border-border flex-shrink-0">
                 <AvatarImage src={user?.photoURL} />
                 <AvatarFallback>{user?.displayName?.charAt(0)}</AvatarFallback>
               </Avatar>
@@ -410,7 +410,7 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                   placeholder="Leave a comment... (Markdown supported)" 
                   value={newComment}
                   onChange={e => setNewComment(e.target.value)}
-                  className="min-h-[120px] border-slate-200 focus:ring-primary resize-none shadow-sm"
+                  className="min-h-[120px] border-border focus:ring-primary resize-none shadow-sm"
                 />
                 <div className="flex justify-end">
                   <Button type="submit" disabled={submittingComment || !newComment.trim()}>
@@ -425,15 +425,15 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
 
         {/* Sidebar Controls */}
         <div className="space-y-6">
-          <Card className="border-slate-200 shadow-sm sticky top-8">
-            <CardHeader className="border-b border-slate-100 pb-4">
-              <CardTitle className="text-sm font-bold uppercase tracking-wider text-slate-400">Management</CardTitle>
+          <Card className="border-border shadow-sm sticky top-8">
+            <CardHeader className="border-b border-border/50 pb-4">
+              <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Management</CardTitle>
             </CardHeader>
             <CardContent className="p-6 space-y-6">
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase">Status</label>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Status</label>
                 <Select value={issue.status} onValueChange={handleStatusChange}>
-                  <SelectTrigger className="w-full border-slate-200">
+                  <SelectTrigger className="w-full border-border">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -447,9 +447,9 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase">Priority</label>
+                <label className="text-xs font-bold text-muted-foreground uppercase">Priority</label>
                 <Select value={issue.priority} onValueChange={handlePriorityChange}>
-                  <SelectTrigger className="w-full border-slate-200">
+                  <SelectTrigger className="w-full border-border">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -462,23 +462,23 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
               </div>
 
               <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-500 uppercase">Assignee</label>
-                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
-                  <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center overflow-hidden">
+                <label className="text-xs font-bold text-muted-foreground uppercase">Assignee</label>
+                <div className="flex items-center gap-3 p-3 bg-muted/50 rounded-lg border border-border/50">
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center overflow-hidden">
                     {assignee ? (
                       <Avatar className="w-full h-full">
                         <AvatarImage src={assignee.photoURL} />
                         <AvatarFallback>{assignee.displayName.charAt(0)}</AvatarFallback>
                       </Avatar>
                     ) : (
-                      <User className="w-4 h-4 text-slate-400" />
+                      <User className="w-4 h-4 text-muted-foreground" />
                     )}
                   </div>
                   <div className="flex flex-col">
-                    <span className={`text-sm ${assignee ? 'text-slate-900 font-medium' : 'text-slate-500 italic'}`}>
+                    <span className={`text-sm ${assignee ? 'text-foreground font-medium' : 'text-muted-foreground italic'}`}>
                       {assignee ? assignee.displayName : 'Unassigned'}
                     </span>
-                    {assignee && <span className="text-[10px] text-slate-400 font-mono">{assignee.role}</span>}
+                    {assignee && <span className="text-[10px] text-muted-foreground font-mono">{assignee.role}</span>}
                   </div>
                   
                   <DropdownMenu>
@@ -486,20 +486,20 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                       {assignee ? 'Change' : 'Assign'}
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56">
-                      <DropdownMenuItem onClick={() => handleAssigneeChange(null)} className="text-slate-500">
+                      <DropdownMenuItem onClick={() => handleAssigneeChange(null)} className="text-muted-foreground">
                         Unassign
                       </DropdownMenuItem>
-                      <div className="h-px bg-slate-100 my-1" />
+                      <div className="h-px bg-border/50 my-1" />
                       {users.filter(u => u.role !== 'VIEWER').map(u => (
                         <DropdownMenuItem key={u.uid} onClick={() => handleAssigneeChange(u.uid)}>
                           <div className="flex items-center gap-2">
-                            <Avatar className="w-5 h-5">
+                            <Avatar className="w-5 h-5 border border-border">
                               <AvatarImage src={u.photoURL} />
                               <AvatarFallback>{u.displayName.charAt(0)}</AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col">
                               <span className="text-sm">{u.displayName}</span>
-                              <span className="text-[10px] text-slate-400">{u.role}</span>
+                              <span className="text-[10px] text-muted-foreground">{u.role}</span>
                             </div>
                           </div>
                         </DropdownMenuItem>
@@ -509,37 +509,37 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-slate-100 space-y-4">
+              <div className="pt-4 border-t border-border/50 space-y-4">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400 flex items-center gap-1">
+                  <span className="text-muted-foreground flex items-center gap-1">
                     <History className="w-3 h-3" />
                     Last updated
                   </span>
-                  <span className="text-slate-600 font-medium">
+                  <span className="text-foreground font-medium">
                     {issue.updatedAt?.toDate ? formatDistanceToNow(issue.updatedAt.toDate()) : 'just now'} ago
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-400 flex items-center gap-1">
+                  <span className="text-muted-foreground flex items-center gap-1">
                     <Paperclip className="w-3 h-3" />
                     Attachments
                   </span>
-                  <span className="text-slate-600 font-medium">{issue.attachments.length} files</span>
+                  <span className="text-foreground font-medium">{issue.attachments.length} files</span>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="border-slate-200 shadow-sm bg-primary/5 border-primary/10">
+          <Card className="border-border shadow-sm bg-primary/5 border-primary/10">
             <CardContent className="p-6">
               <div className="space-y-2">
                 <CheckCircle2 className="w-5 h-5 text-primary" />
-                <h4 className="font-bold text-slate-900">Quick Actions</h4>
+                <h4 className="font-bold text-foreground">Quick Actions</h4>
               </div>
               <div className="space-y-2">
                 <Dialog open={showAuditTrail} onOpenChange={setShowAuditTrail}>
                   <DialogTrigger render={
-                    <Button variant="outline" className="w-full justify-start bg-white border-slate-200 text-slate-700 hover:bg-slate-50">
+                    <Button variant="outline" className="w-full justify-start bg-card border-border text-foreground hover:bg-accent">
                       <History className="w-4 h-4 mr-2" />
                       View Audit Trail
                     </Button>
@@ -550,30 +550,30 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                     </DialogHeader>
                     <div className="space-y-6 mt-4">
                       {auditLogs.length === 0 ? (
-                        <div className="text-center py-8 text-slate-500 italic">No history found for this issue.</div>
+                        <div className="text-center py-8 text-muted-foreground italic">No history found for this issue.</div>
                       ) : (
                         auditLogs.map((log) => {
                           const logUser = users.find(u => u.uid === log.userId);
                           return (
                             <div key={log.id} className="flex gap-4 relative pb-6 last:pb-0">
                               {/* Vertical line connector */}
-                              <div className="absolute left-4 top-8 bottom-0 w-px bg-slate-100 last:hidden" />
+                              <div className="absolute left-4 top-8 bottom-0 w-px bg-border/50 last:hidden" />
                               
-                              <Avatar className="w-8 h-8 border border-slate-200 z-10 bg-white">
+                              <Avatar className="w-8 h-8 border border-border z-10 bg-card">
                                 <AvatarImage src={logUser?.photoURL} />
                                 <AvatarFallback>{(logUser?.displayName || log.userId).charAt(0)}</AvatarFallback>
                               </Avatar>
                               
                               <div className="flex-1 space-y-1">
                                 <div className="flex items-center justify-between">
-                                  <span className="text-sm font-bold text-slate-900">
+                                  <span className="text-sm font-bold text-foreground">
                                     {logUser?.displayName || `User ${log.userId.slice(0, 6)}`}
                                   </span>
-                                  <span className="text-xs text-slate-400">
+                                  <span className="text-xs text-muted-foreground">
                                     {log.timestamp?.toDate ? formatDistanceToNow(log.timestamp.toDate()) : 'just now'} ago
                                   </span>
                                 </div>
-                                <p className="text-sm text-slate-600">
+                                <p className="text-sm text-muted-foreground">
                                   <span className="font-medium text-primary uppercase text-[10px] tracking-wider mr-2 px-1.5 py-0.5 bg-primary/5 rounded">
                                     {log.action}
                                   </span>
@@ -586,16 +586,16 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                                   {log.action === 'DELETE' && 'deleted the issue'}
                                 </p>
                                 {log.action === 'UPDATE' && (
-                                  <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-100 text-xs space-y-1">
+                                  <div className="mt-2 p-3 bg-muted/50 rounded-lg border border-border/50 text-xs space-y-1">
                                     {Object.entries(log.newValue).map(([key, val]: [string, any]) => (
                                       <div key={key} className="flex items-start gap-2">
-                                        <span className="font-bold text-slate-500 w-16 shrink-0">{key}:</span>
+                                        <span className="font-bold text-muted-foreground w-16 shrink-0">{key}:</span>
                                         <div className="flex items-center gap-2 flex-wrap">
-                                          <span className="text-slate-400 line-through">
+                                          <span className="text-muted-foreground/60 line-through">
                                             {String(log.oldValue?.[key] || 'none')}
                                           </span>
-                                          <span className="text-slate-400">→</span>
-                                          <span className="text-slate-900 font-medium">{String(val)}</span>
+                                          <span className="text-muted-foreground/40">→</span>
+                                          <span className="text-foreground font-medium">{String(val)}</span>
                                         </div>
                                       </div>
                                     ))}
@@ -609,7 +609,7 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                     </div>
                   </DialogContent>
                 </Dialog>
-                <Button variant="outline" className="w-full justify-start bg-white border-slate-200 text-slate-700 hover:bg-slate-50">
+                <Button variant="outline" className="w-full justify-start bg-card border-border text-foreground hover:bg-accent">
                   <AlertCircle className="w-4 h-4 mr-2" />
                   Mark as Duplicate
                 </Button>
@@ -618,7 +618,7 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                     variant="outline" 
                     onClick={handleDelete}
                     disabled={deleting}
-                    className="w-full justify-start bg-white border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
+                    className="w-full justify-start bg-card border-destructive/20 text-destructive hover:bg-destructive/10"
                   >
                     <AlertCircle className="w-4 h-4 mr-2" />
                     {deleting ? 'Deleting...' : 'Delete Issue'}

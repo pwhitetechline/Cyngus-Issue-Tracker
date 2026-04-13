@@ -13,18 +13,18 @@
 }
 
 .markdown-body {
-  @apply text-slate-600 leading-relaxed;
+  @apply text-muted-foreground leading-relaxed;
 }
 
-.markdown-body h1 { @apply text-2xl font-bold mt-6 mb-4; }
-.markdown-body h2 { @apply text-xl font-bold mt-5 mb-3; }
-.markdown-body h3 { @apply text-lg font-bold mt-4 mb-2; }
+.markdown-body h1 { @apply text-foreground text-2xl font-bold mt-6 mb-4; }
+.markdown-body h2 { @apply text-foreground text-xl font-bold mt-5 mb-3; }
+.markdown-body h3 { @apply text-foreground text-lg font-bold mt-4 mb-2; }
 .markdown-body p { @apply mb-4; }
 .markdown-body ul { @apply list-disc pl-6 mb-4; }
 .markdown-body ol { @apply list-decimal pl-6 mb-4; }
-.markdown-body code { @apply bg-slate-100 px-1 rounded text-sm font-mono; }
-.markdown-body pre { @apply bg-slate-900 text-slate-50 p-4 rounded-lg overflow-x-auto mb-4; }
-.markdown-body blockquote { @apply border-l-4 border-slate-200 pl-4 italic text-slate-500 mb-4; }
+.markdown-body code { @apply bg-muted px-1 rounded text-sm font-mono text-foreground; }
+.markdown-body pre { @apply bg-slate-950 text-slate-50 p-4 rounded-lg overflow-x-auto mb-4 border border-border/50; }
+.markdown-body blockquote { @apply border-l-4 border-primary/30 pl-4 italic text-muted-foreground mb-4; }
 
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";

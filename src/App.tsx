@@ -14,6 +14,7 @@ import { IssueDetail } from './components/IssueDetail';
 import { UserManagement } from './components/UserManagement';
 import { Toaster } from './components/ui/sonner';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ThemeProvider } from 'next-themes';
 import { Issue } from './types';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
@@ -22,14 +23,16 @@ const queryClient = new QueryClient();
 export default function App() {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <AuthProvider>
-          <AuthGuard>
-            <AppContent />
-            <Toaster position="top-right" />
-          </AuthGuard>
-        </AuthProvider>
-      </QueryClientProvider>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            <AuthGuard>
+              <AppContent />
+              <Toaster position="top-right" />
+            </AuthGuard>
+          </AuthProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   );
 }

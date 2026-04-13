@@ -70,19 +70,19 @@ export function UserManagement() {
 
   if (loading) {
     return <div className="animate-pulse space-y-4">
-      {[1, 2, 3].map(i => <div key={i} className="h-20 bg-slate-100 rounded-xl" />)}
+      {[1, 2, 3].map(i => <div key={i} className="h-20 bg-muted rounded-xl" />)}
     </div>;
   }
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
       <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold text-slate-900 tracking-tight">User Management</h1>
-        <p className="text-slate-500">Manage team members, roles, and access permissions.</p>
+        <h1 className="text-3xl font-bold text-foreground tracking-tight">User Management</h1>
+        <p className="text-muted-foreground">Manage team members, roles, and access permissions.</p>
       </div>
 
-      <Card className="border-slate-200 shadow-sm overflow-hidden">
-        <CardHeader className="bg-slate-50/50 border-b border-slate-100">
+      <Card className="border-border shadow-sm overflow-hidden">
+        <CardHeader className="bg-muted/50 border-b border-border/50">
           <CardTitle className="text-lg font-semibold flex items-center gap-2">
             <Shield className="w-5 h-5 text-primary" />
             Active Team Members
@@ -94,7 +94,7 @@ export function UserManagement() {
         <CardContent className="p-0">
           <Table>
             <TableHeader>
-              <TableRow className="hover:bg-transparent border-slate-100">
+              <TableRow className="hover:bg-transparent border-border/50">
                 <TableHead className="pl-6">User</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Joined</TableHead>
@@ -104,35 +104,35 @@ export function UserManagement() {
             </TableHeader>
             <TableBody>
               {users.map((user) => (
-                <TableRow key={user.uid} className="border-slate-100 hover:bg-slate-50/50 transition-colors">
+                <TableRow key={user.uid} className="border-border/50 hover:bg-muted/50 transition-colors">
                   <TableCell className="pl-6">
                     <div className="flex items-center gap-3">
-                      <Avatar className="w-10 h-10 border border-slate-200">
+                      <Avatar className="w-10 h-10 border border-border">
                         <AvatarImage src={user.photoURL} />
                         <AvatarFallback>{user.displayName.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">
-                        <span className="font-bold text-slate-800">{user.displayName}</span>
-                        <span className="text-xs text-slate-400 font-mono">{user.uid.slice(0, 8)}</span>
+                        <span className="font-bold text-foreground">{user.displayName}</span>
+                        <span className="text-xs text-muted-foreground font-mono">{user.uid.slice(0, 8)}</span>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <Mail className="w-4 h-4 text-slate-400" />
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Mail className="w-4 h-4 text-muted-foreground/60" />
                       {user.email}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <Calendar className="w-4 h-4 text-slate-400" />
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Calendar className="w-4 h-4 text-muted-foreground/60" />
                       {user.createdAt?.toDate ? format(user.createdAt.toDate(), 'MMM d, yyyy') : 'N/A'}
                     </div>
                   </TableCell>
                   <TableCell>
                     <Badge 
                       variant="outline" 
-                      className={user.role === 'ADMIN' ? 'bg-primary/10 text-primary border-primary/20' : 'bg-slate-100 text-slate-600'}
+                      className={user.role === 'ADMIN' ? 'bg-primary/10 text-primary border-primary/20' : 'bg-muted text-muted-foreground'}
                     >
                       {user.role}
                     </Badge>
@@ -144,7 +144,7 @@ export function UserManagement() {
                         onValueChange={(v) => handleRoleChange(user.uid, v as UserRole)}
                         disabled={user.email === 'PWhite.XM@gmail.com'}
                       >
-                        <SelectTrigger className="w-[130px] h-9 border-slate-200">
+                        <SelectTrigger className="w-[130px] h-9 border-border">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -157,7 +157,7 @@ export function UserManagement() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        className="text-slate-400 hover:text-red-600 h-9 w-9"
+                        className="text-muted-foreground hover:text-destructive h-9 w-9"
                         onClick={() => handleDeleteUser(user.uid, user.email)}
                         disabled={user.email === 'PWhite.XM@gmail.com'}
                       >
