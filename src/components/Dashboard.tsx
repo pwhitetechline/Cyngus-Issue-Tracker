@@ -138,7 +138,7 @@ export function Dashboard({ onIssueClick }: DashboardProps) {
           </CardHeader>
           <CardContent className="p-6">
             <div className="space-y-6">
-              {users.filter(u => u.role === 'ASSIGNEE' || u.role === 'ADMIN').slice(0, 5).map((user, idx) => {
+              {users.map((user, idx) => {
                 const activeIssues = issues.filter(i => i.assigneeId === user.uid && i.status !== 'RESOLVED' && i.status !== 'CLOSED').length;
                 const colors = ['bg-blue-500', 'bg-amber-500', 'bg-red-500', 'bg-emerald-500', 'bg-purple-500'];
                 return (
