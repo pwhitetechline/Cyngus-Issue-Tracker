@@ -117,7 +117,7 @@ export function Dashboard({ onIssueClick }: DashboardProps) {
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {recentIssues.map(issue => (
-                <IssueCard key={issue.id} issue={issue} onClick={onIssueClick} />
+                <IssueCard key={issue.id} issue={issue} users={users} onClick={onIssueClick} />
               ))}
               {recentIssues.length === 0 && (
                 <div className="col-span-2 py-12 text-center text-slate-400">

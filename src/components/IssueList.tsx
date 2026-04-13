@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useIssues } from '../hooks/useIssues';
+import { useUsers } from '../hooks/useUsers';
 import { Issue, IssueStatus, IssuePriority, IssueType } from '../types';
 import { IssueCard } from './IssueCard';
 import { Input } from './ui/input';
@@ -23,7 +24,10 @@ export function IssueList({ onIssueClick }: IssueListProps) {
   const [filters, setFilters] = useState<{ status?: IssueStatus; priority?: IssuePriority; type?: IssueType }>({});
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-  const { issues, loading } = useIssues(filters);
+  const { issues, loading: issuesLoading } = useIssues(filters);
+  const { users, loading: usersLoading } = useUsers();
+
+  const loading = issuesLoading || usersLoading;
 
   const filteredIssues = issues.filter(issue => 
     issue.title.toLowerCase().includes(search.toLowerCase()) ||
@@ -122,7 +126,7 @@ export function IssueList({ onIssueClick }: IssueListProps) {
                 : "flex flex-col gap-4"
             )}>
               {filteredIssues.map(issue => (
-                <IssueCard key={issue.id} issue={issue} onClick={onIssueClick} />
+                <IssueCard key={issue.id} issue={issue} users={users} onClick={onIssueClick} />
               ))}
             </div>
           ) : (

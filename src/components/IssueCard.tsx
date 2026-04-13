@@ -1,6 +1,7 @@
-import { Issue, IssueStatus, IssuePriority, IssueType } from '../types';
+import { Issue, IssueStatus, IssuePriority, IssueType, User as UserType } from '../types';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { 
   AlertCircle, 
   Clock, 
@@ -17,6 +18,7 @@ import { cn } from '../lib/utils';
 
 interface IssueCardProps {
   issue: Issue;
+  users?: UserType[];
   onClick: (issue: Issue) => void;
 }
 
@@ -53,8 +55,10 @@ function LightbulbIcon({ className }: { className?: string }) {
   return <Clock className={className} />;
 }
 
-export function IssueCard({ issue, onClick }: IssueCardProps) {
+export function IssueCard({ issue, users = [], onClick }: IssueCardProps) {
   const createdAt = issue.createdAt?.toDate ? issue.createdAt.toDate() : new Date();
+  const reporter = users.find(u => u.uid === issue.reporterId);
+  const assignee = users.find(u => u.uid === issue.assigneeId);
 
   return (
     <Card 
@@ -107,12 +111,26 @@ export function IssueCard({ issue, onClick }: IssueCardProps) {
           </div>
           
           <div className="flex -space-x-2">
-            <div className="w-6 h-6 rounded-full bg-slate-200 border-2 border-white flex items-center justify-center overflow-hidden">
-              <User className="w-3 h-3 text-slate-400" />
+            <div className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center overflow-hidden bg-slate-100" title={`Reporter: ${reporter?.displayName || issue.reporterId}`}>
+              {reporter ? (
+                <Avatar className="w-full h-full">
+                  <AvatarImage src={reporter.photoURL} />
+                  <AvatarFallback className="text-[8px]">{reporter.displayName.charAt(0)}</AvatarFallback>
+                </Avatar>
+              ) : (
+                <User className="w-3 h-3 text-slate-400" />
+              )}
             </div>
             {issue.assigneeId && (
-              <div className="w-6 h-6 rounded-full bg-primary/20 border-2 border-white flex items-center justify-center overflow-hidden">
-                <User className="w-3 h-3 text-primary" />
+              <div className="w-6 h-6 rounded-full border-2 border-white flex items-center justify-center overflow-hidden bg-primary/10" title={`Assignee: ${assignee?.displayName || issue.assigneeId}`}>
+                {assignee ? (
+                  <Avatar className="w-full h-full">
+                    <AvatarImage src={assignee.photoURL} />
+                    <AvatarFallback className="text-[8px]">{assignee.displayName.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                ) : (
+                  <User className="w-3 h-3 text-primary" />
+                )}
               </div>
             )}
           </div>

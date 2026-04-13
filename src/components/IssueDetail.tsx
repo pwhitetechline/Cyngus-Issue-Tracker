@@ -162,6 +162,7 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
 
   const createdAt = issue.createdAt?.toDate ? issue.createdAt.toDate() : new Date();
   const assignee = users.find(u => u.uid === issue.assigneeId);
+  const reporter = users.find(u => u.uid === issue.reporterId);
 
   return (
     <div className="space-y-8 max-w-5xl mx-auto pb-20">
@@ -185,9 +186,10 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
               <div className="flex items-center gap-6 mt-6">
                 <div className="flex items-center gap-2">
                   <Avatar className="w-6 h-6">
-                    <AvatarFallback>{issue.reporterId.charAt(0)}</AvatarFallback>
+                    <AvatarImage src={reporter?.photoURL} />
+                    <AvatarFallback>{(reporter?.displayName || issue.reporterId).charAt(0)}</AvatarFallback>
                   </Avatar>
-                  <span className="text-sm text-slate-600">Reporter ID: {issue.reporterId.slice(0, 6)}</span>
+                  <span className="text-sm text-slate-600">Reporter: {reporter?.displayName || `User ${issue.reporterId.slice(0, 6)}`}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-400">
                   <Clock className="w-4 h-4" />
@@ -264,29 +266,35 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
             </h3>
 
             <div className="space-y-4">
-              {comments.map(comment => (
-                <div key={comment.id} className="flex gap-4">
-                  <Avatar className="w-10 h-10 border border-slate-200 flex-shrink-0">
-                    <AvatarFallback>{comment.userId.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <Card className="flex-1 border-slate-200 shadow-sm">
-                    <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-slate-800">User {comment.userId.slice(0, 6)}</span>
-                        <span className="text-xs text-slate-400">
-                          {comment.createdAt?.toDate ? formatDistanceToNow(comment.createdAt.toDate()) : 'just now'} ago
-                        </span>
-                      </div>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
-                        <MoreVertical className="w-4 h-4" />
-                      </Button>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-0 text-sm text-slate-600 leading-relaxed">
-                      {comment.content}
-                    </CardContent>
-                  </Card>
-                </div>
-              ))}
+              {comments.map(comment => {
+                const commentUser = users.find(u => u.uid === comment.userId);
+                return (
+                  <div key={comment.id} className="flex gap-4">
+                    <Avatar className="w-10 h-10 border border-slate-200 flex-shrink-0">
+                      <AvatarImage src={commentUser?.photoURL} />
+                      <AvatarFallback>{(commentUser?.displayName || comment.userId).charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <Card className="flex-1 border-slate-200 shadow-sm">
+                      <CardHeader className="p-4 pb-2 flex flex-row items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-bold text-slate-800">
+                            {commentUser?.displayName || `User ${comment.userId.slice(0, 6)}`}
+                          </span>
+                          <span className="text-xs text-slate-400">
+                            {comment.createdAt?.toDate ? formatDistanceToNow(comment.createdAt.toDate()) : 'just now'} ago
+                          </span>
+                        </div>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
+                          <MoreVertical className="w-4 h-4" />
+                        </Button>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0 text-sm text-slate-600 leading-relaxed">
+                        {comment.content}
+                      </CardContent>
+                    </Card>
+                  </div>
+                );
+              })}
             </div>
 
             {/* New Comment Form */}
