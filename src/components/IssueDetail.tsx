@@ -43,8 +43,11 @@ import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../hooks/useAuth';
 import { 
   collection, 
-  addDoc, 
-  onSnapshot, 
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  onSnapshot,
   query, 
   orderBy, 
   serverTimestamp 
@@ -70,6 +73,9 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editContent, setEditContent] = useState('');
+  const [updatingComment, setUpdatingComment] = useState(false);
 
   useEffect(() => {
     if (!issueId) return;
@@ -143,6 +149,46 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
       toast.error('Failed to add comment');
     } finally {
       setSubmittingComment(false);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    if (!window.confirm('Are you sure you want to delete this comment?')) return;
+    
+    try {
+      await deleteDoc(doc(db, 'issues', issueId, 'comments', commentId));
+      toast.success('Comment deleted');
+    } catch (error) {
+      toast.error('Failed to delete comment');
+    }
+  };
+
+  const handleStartEdit = (comment: Comment) => {
+    setEditingCommentId(comment.id);
+    setEditContent(comment.content);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingCommentId(null);
+    setEditContent('');
+  };
+
+  const handleUpdateComment = async (commentId: string) => {
+    if (!editContent.trim()) return;
+
+    setUpdatingComment(true);
+    try {
+      await updateDoc(doc(db, 'issues', issueId, 'comments', commentId), {
+        content: editContent,
+        updatedAt: serverTimestamp(),
+      });
+      setEditingCommentId(null);
+      setEditContent('');
+      toast.success('Comment updated');
+    } catch (error) {
+      toast.error('Failed to update comment');
+    } finally {
+      setUpdatingComment(false);
     }
   };
 
@@ -284,12 +330,45 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                             {comment.createdAt?.toDate ? formatDistanceToNow(comment.createdAt.toDate()) : 'just now'} ago
                           </span>
                         </div>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400">
-                          <MoreVertical className="w-4 h-4" />
-                        </Button>
+                        {(isAdmin || user?.uid === comment.userId) && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400" />}>
+                              <MoreVertical className="w-4 h-4" />
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleStartEdit(comment)}>
+                                Edit Comment
+                              </DropdownMenuItem>
+                              <DropdownMenuItem 
+                                onClick={() => handleDeleteComment(comment.id)}
+                                className="text-red-600 focus:text-red-600"
+                              >
+                                Delete Comment
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                       </CardHeader>
                       <CardContent className="p-4 pt-0 text-sm text-slate-600 leading-relaxed">
-                        {comment.content}
+                        {editingCommentId === comment.id ? (
+                          <div className="space-y-3">
+                            <Textarea 
+                              value={editContent}
+                              onChange={e => setEditContent(e.target.value)}
+                              className="min-h-[100px] border-slate-200 focus:ring-primary resize-none shadow-sm"
+                            />
+                            <div className="flex justify-end gap-2">
+                              <Button variant="ghost" size="sm" onClick={handleCancelEdit} disabled={updatingComment}>
+                                Cancel
+                              </Button>
+                              <Button size="sm" onClick={() => handleUpdateComment(comment.id)} disabled={updatingComment || !editContent.trim()}>
+                                {updatingComment ? 'Saving...' : 'Save Changes'}
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          comment.content
+                        )}
                       </CardContent>
                     </Card>
                   </div>
