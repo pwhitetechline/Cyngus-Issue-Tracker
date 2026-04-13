@@ -11,6 +11,13 @@ import {
   DropdownMenuTrigger 
 } from './ui/dropdown-menu';
 import { 
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from './ui/dialog';
+import { 
   Card, 
   CardContent, 
   CardHeader, 
@@ -49,6 +56,7 @@ import {
   doc,
   onSnapshot,
   query, 
+  where,
   orderBy, 
   serverTimestamp 
 } from 'firebase/firestore';
@@ -76,6 +84,21 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState('');
   const [updatingComment, setUpdatingComment] = useState(false);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
+  const [showAuditTrail, setShowAuditTrail] = useState(false);
+
+  useEffect(() => {
+    if (!issueId) return;
+    const q = query(
+      collection(db, 'auditLogs'),
+      where('issueId', '==', issueId),
+      orderBy('timestamp', 'desc')
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setAuditLogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    return () => unsubscribe();
+  }, [issueId]);
 
   useEffect(() => {
     if (!issueId) return;
@@ -509,15 +532,83 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
 
           <Card className="border-slate-200 shadow-sm bg-primary/5 border-primary/10">
             <CardContent className="p-6">
-              <div className="flex items-center gap-3 mb-3">
+              <div className="space-y-2">
                 <CheckCircle2 className="w-5 h-5 text-primary" />
                 <h4 className="font-bold text-slate-900">Quick Actions</h4>
               </div>
               <div className="space-y-2">
-                <Button variant="outline" className="w-full justify-start bg-white border-slate-200 text-slate-700 hover:bg-slate-50">
-                  <History className="w-4 h-4 mr-2" />
-                  View Audit Trail
-                </Button>
+                <Dialog open={showAuditTrail} onOpenChange={setShowAuditTrail}>
+                  <DialogTrigger render={
+                    <Button variant="outline" className="w-full justify-start bg-white border-slate-200 text-slate-700 hover:bg-slate-50">
+                      <History className="w-4 h-4 mr-2" />
+                      View Audit Trail
+                    </Button>
+                  } />
+                  <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>Audit Trail - #CYG-{issue.id?.slice(0, 8).toUpperCase()}</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-6 mt-4">
+                      {auditLogs.length === 0 ? (
+                        <div className="text-center py-8 text-slate-500 italic">No history found for this issue.</div>
+                      ) : (
+                        auditLogs.map((log) => {
+                          const logUser = users.find(u => u.uid === log.userId);
+                          return (
+                            <div key={log.id} className="flex gap-4 relative pb-6 last:pb-0">
+                              {/* Vertical line connector */}
+                              <div className="absolute left-4 top-8 bottom-0 w-px bg-slate-100 last:hidden" />
+                              
+                              <Avatar className="w-8 h-8 border border-slate-200 z-10 bg-white">
+                                <AvatarImage src={logUser?.photoURL} />
+                                <AvatarFallback>{(logUser?.displayName || log.userId).charAt(0)}</AvatarFallback>
+                              </Avatar>
+                              
+                              <div className="flex-1 space-y-1">
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-bold text-slate-900">
+                                    {logUser?.displayName || `User ${log.userId.slice(0, 6)}`}
+                                  </span>
+                                  <span className="text-xs text-slate-400">
+                                    {log.timestamp?.toDate ? formatDistanceToNow(log.timestamp.toDate()) : 'just now'} ago
+                                  </span>
+                                </div>
+                                <p className="text-sm text-slate-600">
+                                  <span className="font-medium text-primary uppercase text-[10px] tracking-wider mr-2 px-1.5 py-0.5 bg-primary/5 rounded">
+                                    {log.action}
+                                  </span>
+                                  {log.action === 'CREATE' && 'created the issue'}
+                                  {log.action === 'UPDATE' && (
+                                    <span>
+                                      updated {Object.keys(log.newValue).join(', ')}
+                                    </span>
+                                  )}
+                                  {log.action === 'DELETE' && 'deleted the issue'}
+                                </p>
+                                {log.action === 'UPDATE' && (
+                                  <div className="mt-2 p-3 bg-slate-50 rounded-lg border border-slate-100 text-xs space-y-1">
+                                    {Object.entries(log.newValue).map(([key, val]: [string, any]) => (
+                                      <div key={key} className="flex items-start gap-2">
+                                        <span className="font-bold text-slate-500 w-16 shrink-0">{key}:</span>
+                                        <div className="flex items-center gap-2 flex-wrap">
+                                          <span className="text-slate-400 line-through">
+                                            {String(log.oldValue?.[key] || 'none')}
+                                          </span>
+                                          <span className="text-slate-400">→</span>
+                                          <span className="text-slate-900 font-medium">{String(val)}</span>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </DialogContent>
+                </Dialog>
                 <Button variant="outline" className="w-full justify-start bg-white border-slate-200 text-slate-700 hover:bg-slate-50">
                   <AlertCircle className="w-4 h-4 mr-2" />
                   Mark as Duplicate
