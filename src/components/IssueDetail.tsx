@@ -44,7 +44,8 @@ import {
   CheckCircle2,
   AlertCircle,
   ExternalLink,
-  Image as ImageIcon
+  Image as ImageIcon,
+  X
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../hooks/useAuth';
@@ -64,9 +65,14 @@ import {
 import { db } from '../lib/firebase';
 import ReactMarkdown from 'react-markdown';
 import { Textarea } from './ui/textarea';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Skeleton } from './ui/skeleton';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { storage } from '../lib/firebase';
+import { Loader2, Plus, Pencil, Save, History, Paperclip, CheckCircle2, AlertCircle, ExternalLink, Image as ImageIcon, X } from 'lucide-react';
 
 interface IssueDetailProps {
   issueId: string;
@@ -88,6 +94,32 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
   const [updatingComment, setUpdatingComment] = useState(false);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [showAuditTrail, setShowAuditTrail] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [isEditingIssue, setIsEditingIssue] = useState(false);
+  const [editIssueData, setEditIssueData] = useState({ title: '', description: '' });
+  const [isUrlDialogOpen, setIsUrlDialogOpen] = useState(false);
+  const [attachmentUrl, setAttachmentUrl] = useState('');
+  const [attachmentName, setAttachmentName] = useState('');
+  const [addingUrl, setAddingUrl] = useState(false);
+
+  const handleAddUrlAttachment = async () => {
+    if (!attachmentUrl.trim() || !attachmentName.trim() || !issue) return;
+    
+    setAddingUrl(true);
+    try {
+      const newAttachments = [...(issue.attachments || [])];
+      newAttachments.push({ name: attachmentName, url: attachmentUrl });
+      await updateIssue(issueId, { attachments: newAttachments });
+      toast.success('URL attachment added');
+      setIsUrlDialogOpen(false);
+      setAttachmentUrl('');
+      setAttachmentName('');
+    } catch (error) {
+      toast.error('Failed to add URL');
+    } finally {
+      setAddingUrl(false);
+    }
+  };
 
   useEffect(() => {
     if (!issueId) return;
@@ -98,6 +130,8 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setAuditLogs(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    }, (error) => {
+      console.error('Audit log fetch error:', error);
     });
     return () => unsubscribe();
   }, [issueId]);
@@ -110,6 +144,8 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
     );
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setComments(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Comment)));
+    }, (error) => {
+      console.error('Comments fetch error:', error);
     });
     return () => unsubscribe();
   }, [issueId]);
@@ -275,6 +311,129 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0 || !issue) return;
+
+    const fileList = Array.from(files);
+    console.log(`[Upload] Starting for ${fileList.length} files`);
+    
+    setUploading(true);
+    const uploadToastId = toast.loading('Initializing upload...');
+    
+    try {
+      const newAttachments = [...(issue.attachments || [])];
+      
+      for (const file of fileList) {
+        if (file.size > 20 * 1024 * 1024) {
+          throw new Error(`File ${file.name} is too large (max 20MB)`);
+        }
+
+        console.log(`[Upload] Processing: ${file.name} (${file.size} bytes)`);
+        toast.message(`Uploading ${file.name}...`, { id: uploadToastId });
+        
+        const cleanName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+        const storagePath = `issues/${issueId}/attachments/${Date.now()}_${cleanName}`;
+        const storageRef = ref(storage, storagePath);
+        
+        // Use simple uploadBytes with a 120 second timeout
+        console.log(`[Upload] Starting uploadBytes for ${file.name} to ${storageRef.fullPath}`);
+        const uploadResult = await Promise.race([
+          uploadBytes(storageRef, file, {
+            contentType: file.type,
+            customMetadata: {
+              originalName: file.name,
+              uploadedBy: user?.uid || 'unknown'
+            }
+          }),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => {
+              console.error(`[Upload] Timeout reached for ${file.name}`);
+              reject(new Error(`Upload of ${file.name} timed out after 120s. This might be a network issue or missing CORS configuration on the bucket.`));
+            }, 120000)
+          )
+        ]);
+
+        const url = await getDownloadURL(uploadResult.ref);
+        console.log(`[Upload] Finished: ${file.name} -> ${url}`);
+        newAttachments.push({ name: file.name, url });
+      }
+
+      console.log('[Upload] Finalizing Firestore update');
+      toast.message('Finalizing issue update...', { id: uploadToastId });
+      await updateIssue(issueId, { attachments: newAttachments });
+      toast.success('Files uploaded successfully', { id: uploadToastId });
+    } catch (error) {
+      console.error('[Upload] Detailed failure:', error);
+      const isTimeout = error instanceof Error && error.message.includes('timeout');
+      
+      if (isTimeout) {
+        toast.error('Upload Timed Out', {
+          id: uploadToastId,
+          description: 'This is likely a CORS issue in your Firebase bucket. Please check the Console for instructions.',
+          duration: 10000
+        });
+        
+        console.group('%c 🛠️ Firebase Storage Troubleshooting', 'color: white; background: #e11d48; font-size: 14px; padding: 4px; border-radius: 4px;');
+        console.log('If you see a CORS error above, you need to configure your bucket to allow the app origin.');
+        console.log('Run this command using gsutil or check the Firebase console:');
+        console.log(`gsutil cors set cors-json.json gs://${firebaseConfig.storageBucket}`);
+        console.log('Content of cors-json.json:');
+        console.log(JSON.stringify([{
+          "origin": [window.location.origin],
+          "method": ["GET", "PUT", "POST", "DELETE", "HEAD"],
+          "maxAgeSeconds": 3600
+        }], null, 2));
+        console.groupEnd();
+      } else {
+        toast.error(error instanceof Error ? `Upload failed: ${error.message}` : 'Failed to upload files', { id: uploadToastId });
+      }
+    } finally {
+      console.log('[Upload] Process complete');
+      setUploading(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleRemoveAttachment = async (index: number) => {
+    if (!issue || !window.confirm('Are you sure you want to remove this attachment?')) return;
+
+    const newAttachments = [...(issue.attachments || [])];
+    newAttachments.splice(index, 1);
+
+    try {
+      await updateIssue(issueId, { attachments: newAttachments });
+      toast.success('Attachment removed');
+    } catch (error) {
+      toast.error('Failed to remove attachment');
+    }
+  };
+
+  const startEditingIssue = () => {
+    if (!issue) return;
+    setEditIssueData({ title: issue.title, description: issue.description });
+    setIsEditingIssue(true);
+  };
+
+  const cancelEditingIssue = () => {
+    setIsEditingIssue(false);
+  };
+
+  const handleSaveIssue = async () => {
+    if (!editIssueData.title.trim() || !editIssueData.description.trim()) return;
+    
+    setSavingIssue(true);
+    try {
+      await updateIssue(issueId, editIssueData);
+      setIsEditingIssue(false);
+      toast.success('Issue updated successfully');
+    } catch (error) {
+      toast.error('Failed to update issue');
+    } finally {
+      setSavingIssue(false);
+    }
+  };
+
   if (issueLoading) {
     return (
       <div className="space-y-8 max-w-5xl mx-auto">
@@ -305,13 +464,42 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
         <div className="lg:col-span-2 space-y-8">
           <Card className="border-border shadow-sm">
             <CardHeader className="border-b border-border/50 p-8">
-              <div className="flex items-center gap-3 mb-4">
-                <Badge className="bg-primary/10 text-primary border-primary/20">{issue.type}</Badge>
-                <span className="text-sm text-muted-foreground font-mono">#CYG-{issue.id?.slice(0, 8).toUpperCase()}</span>
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-3">
+                  <Badge className="bg-primary/10 text-primary border-primary/20">{issue.type}</Badge>
+                  <span className="text-sm text-muted-foreground font-mono">#CYG-{issue.id?.slice(0, 8).toUpperCase()}</span>
+                </div>
+                {(isAdmin || user?.uid === issue.reporterId) && !isEditingIssue && (
+                  <Button variant="ghost" size="sm" onClick={startEditingIssue} className="text-muted-foreground hover:text-primary">
+                    <Pencil className="w-4 h-4 mr-2" />
+                    Edit
+                  </Button>
+                )}
+                {isEditingIssue && (
+                  <div className="flex items-center gap-2">
+                    <Button variant="ghost" size="sm" onClick={cancelEditingIssue} disabled={savingIssue}>
+                      <CloseIcon className="w-4 h-4 mr-2" />
+                      Cancel
+                    </Button>
+                    <Button size="sm" onClick={handleSaveIssue} disabled={savingIssue}>
+                      {savingIssue ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                      Save
+                    </Button>
+                  </div>
+                )}
               </div>
-              <CardTitle className="text-3xl font-bold text-foreground tracking-tight leading-tight">
-                {issue.title}
-              </CardTitle>
+              {isEditingIssue ? (
+                <Input 
+                  value={editIssueData.title}
+                  onChange={e => setEditIssueData({ ...editIssueData, title: e.target.value })}
+                  className="text-2xl font-bold h-12"
+                  placeholder="Issue title"
+                />
+              ) : (
+                <CardTitle className="text-3xl font-bold text-foreground tracking-tight leading-tight">
+                  {issue.title}
+                </CardTitle>
+              )}
               <div className="flex items-center gap-6 mt-6">
                 <div className="flex items-center gap-2">
                   <Avatar className="w-6 h-6 border border-border">
@@ -327,15 +515,50 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
               </div>
             </CardHeader>
             <CardContent className="p-8 prose prose-slate dark:prose-invert max-w-none">
-              <div className="markdown-body">
-                <ReactMarkdown>{issue.description}</ReactMarkdown>
-              </div>
+              {isEditingIssue ? (
+                <div className="space-y-6">
+                  <Textarea 
+                    value={editIssueData.description}
+                    onChange={e => setEditIssueData({ ...editIssueData, description: e.target.value })}
+                    className="min-h-[300px] text-base"
+                    placeholder="Describe the issue..."
+                  />
+                  <div className="space-y-4 not-prose">
+                    <Label className="text-sm font-semibold text-foreground">Add Attachments</Label>
+                    <div 
+                      className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer bg-muted/50 group"
+                      onClick={() => document.getElementById('edit-file-upload')?.click()}
+                    >
+                      <input 
+                        id="edit-file-upload"
+                        type="file" 
+                        multiple 
+                        className="hidden" 
+                        onChange={handleFileUpload}
+                        accept="image/*,.pdf,.doc,.docx"
+                      />
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="p-2 bg-card rounded-full shadow-sm group-hover:scale-110 transition-transform">
+                          {uploading ? <Loader2 className="w-5 h-5 animate-spin text-primary" /> : <ImageIcon className="w-5 h-5 text-muted-foreground group-hover:text-primary" />}
+                        </div>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          {uploading ? 'Uploading...' : 'Click to add more screenshots or documents'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="markdown-body">
+                  <ReactMarkdown>{issue.description}</ReactMarkdown>
+                </div>
+              )}
 
               {issue.attachments && issue.attachments.length > 0 && (
                 <div className="mt-8 pt-8 border-t border-border/50">
                   <h4 className="text-sm font-bold text-foreground uppercase tracking-wider mb-4 flex items-center gap-2">
                     <Paperclip className="w-4 h-4 text-primary" />
-                    Attachments ({issue.attachments.length})
+                    Attachments ({(issue.attachments?.length || 0)})
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {issue.attachments.map((file, index) => {
@@ -368,6 +591,14 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                             >
                               <ExternalLink className="w-3.5 h-3.5" />
                             </a>
+                            {(isAdmin || user?.uid === issue.reporterId) && (
+                              <button 
+                                onClick={() => handleRemoveAttachment(index)}
+                                className="p-1.5 bg-muted rounded-md text-muted-foreground hover:bg-destructive hover:text-white transition-colors"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                           </div>
                         </div>
                       );
@@ -584,7 +815,71 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                     <Paperclip className="w-3 h-3" />
                     Attachments
                   </span>
-                  <span className="text-foreground font-medium">{issue.attachments.length} files</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-foreground font-medium">{(issue.attachments?.length || 0)} files</span>
+                    <input 
+                      id="sidebar-file-upload"
+                      type="file" 
+                      multiple 
+                      className="hidden" 
+                      onChange={handleFileUpload}
+                      accept="image/*,.pdf,.doc,.docx"
+                    />
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      className="h-5 w-5 text-primary hover:bg-primary/10"
+                      disabled={uploading}
+                      onClick={() => document.getElementById('sidebar-file-upload')?.click()}
+                    >
+                      {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Plus className="w-3 h-3" />}
+                    </Button>
+                    
+                    <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-5 w-5 text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                          title="Add file via URL"
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Add Attachment via URL</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4 py-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="url-name">File Name</Label>
+                            <Input 
+                              id="url-name" 
+                              placeholder="e.g. Design Spec PDF" 
+                              value={attachmentName}
+                              onChange={(e) => setAttachmentName(e.target.value)}
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <Label htmlFor="url-value">URL</Label>
+                            <Input 
+                              id="url-value" 
+                              placeholder="https://example.com/file.pdf" 
+                              value={attachmentUrl}
+                              onChange={(e) => setAttachmentUrl(e.target.value)}
+                            />
+                          </div>
+                          <Button 
+                            className="w-full" 
+                            onClick={handleAddUrlAttachment}
+                            disabled={addingUrl || !attachmentUrl || !attachmentName}
+                          >
+                            {addingUrl ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : 'Add Attachment'}
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </div>
               </div>
             </CardContent>

@@ -58,13 +58,15 @@ service cloud.firestore {
     }
 
     function isValidIssue(data) {
-      return data.keys().hasAll(['title', 'description', 'type', 'status', 'priority', 'reporterId', 'createdAt', 'updatedAt']) &&
+      let requiredFields = ['title', 'description', 'type', 'status', 'priority', 'reporterId', 'createdAt', 'updatedAt'];
+      return data.keys().hasAll(requiredFields) &&
              data.title is string && data.title.size() >= 5 && data.title.size() <= 100 &&
              data.description is string && data.description.size() >= 10 &&
              data.type in ['BUG', 'FEATURE', 'SUGGESTION'] &&
              data.status in ['OPEN', 'IN_PROGRESS', 'IN_REVIEW', 'RESOLVED', 'CLOSED'] &&
              data.priority in ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] &&
-             data.reporterId is string;
+             data.reporterId is string &&
+             (!data.keys().hasAny(['attachments']) || data.attachments is list);
     }
 
     function isValidComment(data) {

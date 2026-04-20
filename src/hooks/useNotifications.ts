@@ -38,7 +38,9 @@ export function useNotifications() {
       setNotifications(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Notification)));
       setLoading(false);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, path);
+      console.error('Notification fetch error:', error);
+      handleFirestoreError(error, OperationType.LIST, path, false);
+      setLoading(false);
     });
 
     return () => unsubscribe();

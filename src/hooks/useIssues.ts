@@ -91,14 +91,14 @@ export function useIssueActions() {
     try {
       const docRef = await addDoc(collection(db, path), newIssue);
       
-      // Add audit log
-      await addDoc(collection(db, 'auditLogs'), {
+      // Attempt to add audit log in background
+      addDoc(collection(db, 'auditLogs'), {
         issueId: docRef.id,
         userId: user.uid,
         action: 'CREATE',
         newValue: newIssue,
         timestamp: serverTimestamp(),
-      });
+      }).catch(err => console.error('Failed to create audit log:', err));
 
       return docRef.id;
     } catch (error) {
@@ -115,20 +115,24 @@ export function useIssueActions() {
       const oldDoc = await getDoc(issueRef);
       const oldData = oldDoc.data();
 
+      // Perform the update first
       await updateDoc(issueRef, {
         ...data,
         updatedAt: serverTimestamp(),
       });
 
-      // Add audit log
-      await addDoc(collection(db, 'auditLogs'), {
+      // Attempt to add audit log in the background
+      addDoc(collection(db, 'auditLogs'), {
         issueId: id,
         userId: user.uid,
         action: 'UPDATE',
-        oldValue: oldData,
+        oldValue: oldData || {},
         newValue: data,
         timestamp: serverTimestamp(),
+      }).catch(err => {
+        console.error('Failed to create audit log:', err);
       });
+      
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, path);
     }
@@ -141,13 +145,13 @@ export function useIssueActions() {
       const { deleteDoc } = await import('firebase/firestore');
       await deleteDoc(doc(db, 'issues', id));
       
-      // Add audit log
-      await addDoc(collection(db, 'auditLogs'), {
+      // Attempt to add audit log in background
+      addDoc(collection(db, 'auditLogs'), {
         issueId: id,
         userId: user.uid,
         action: 'DELETE',
         timestamp: serverTimestamp(),
-      });
+      }).catch(err => console.error('Failed to delete audit log:', err));
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, path);
     }

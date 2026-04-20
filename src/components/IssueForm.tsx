@@ -73,22 +73,40 @@ export function IssueForm({ onSuccess }: IssueFormProps) {
   const uploadFiles = async (files: FileList | File[]) => {
     if (uploading) return;
     setUploading(true);
+    const uploadToastId = toast.loading('Initializing upload...');
 
     try {
       const uploadedAttachments: { name: string; url: string }[] = [];
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        const storageRef = ref(storage, `issues/attachments/${Date.now()}-${file.name}`);
-        const snapshot = await uploadBytes(storageRef, file);
-        const url = await getDownloadURL(snapshot.ref);
+      const fileList = Array.from(files);
+      
+      for (const file of fileList) {
+        toast.message(`Uploading ${file.name}...`, { id: uploadToastId });
+        
+        const cleanName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
+        const storageRef = ref(storage, `issues/attachments/${Date.now()}_${cleanName}`);
+        
+        console.log(`[Upload] Starting uploadBytes for ${file.name} to ${storageRef.fullPath}`);
+        const uploadResult = await Promise.race([
+          uploadBytes(storageRef, file, {
+            contentType: file.type,
+          }),
+          new Promise<never>((_, reject) => 
+            setTimeout(() => {
+              console.error(`[Upload] Timeout reached for ${file.name}`);
+              reject(new Error(`Upload of ${file.name} timed out after 120s`));
+            }, 120000)
+          )
+        ]);
+
+        const url = await getDownloadURL(uploadResult.ref);
         uploadedAttachments.push({ name: file.name, url });
       }
       
       setAttachments(prev => [...prev, ...uploadedAttachments]);
-      toast.success('Files uploaded successfully');
+      toast.success('Files uploaded successfully', { id: uploadToastId });
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error('Failed to upload files. Please try again.');
+      toast.error('Failed to upload files', { id: uploadToastId });
     } finally {
       setUploading(false);
     }
