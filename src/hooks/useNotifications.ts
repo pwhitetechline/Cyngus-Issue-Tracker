@@ -63,13 +63,36 @@ export function useNotifications() {
     }
   };
 
-  const createNotification = async (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>) => {
+  const createNotification = async (notification: Omit<Notification, 'id' | 'createdAt' | 'read'>, recipientEmail?: string) => {
     try {
       await addDoc(collection(db, 'notifications'), {
         ...notification,
         read: false,
         createdAt: serverTimestamp(),
       });
+
+      // If an email is provided, send the email via our API
+      if (recipientEmail) {
+        try {
+          await fetch('/api/send-email', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: recipientEmail,
+              subject: notification.title,
+              html: `
+                <div style="font-family: sans-serif; padding: 20px; color: #333;">
+                  <h2 style="color: #000;">${notification.title}</h2>
+                  <p>${notification.message}</p>
+                  ${notification.link ? `<a href="${window.location.origin}${notification.link}" style="display: inline-block; padding: 10px 20px; background-color: #000; color: #fff; text-decoration: none; border-radius: 5px; margin-top: 10px;">View Issue</a>` : ''}
+                </div>
+              `
+            }),
+          });
+        } catch (emailError) {
+          console.error('Failed to send email notification:', emailError);
+        }
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.CREATE, 'notifications');
     }

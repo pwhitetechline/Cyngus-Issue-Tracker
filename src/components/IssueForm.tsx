@@ -16,8 +16,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/
 import { Badge } from './ui/badge';
 import { X, Plus, Send, Loader2, Image as ImageIcon, Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { storage } from '../lib/firebase';
+import { uploadFileFallback } from '../lib/storageFallback';
 
 interface IssueFormProps {
   onSuccess: () => void;
@@ -51,9 +52,9 @@ export function IssueForm({ onSuccess }: IssueFormProps) {
       });
       toast.success('Issue created successfully');
       onSuccess();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error('Failed to create issue');
+      toast.error(`Failed to create issue: ${error.message || 'Unknown error'}`);
     } finally {
       setLoading(false);
     }
@@ -80,26 +81,37 @@ export function IssueForm({ onSuccess }: IssueFormProps) {
       const fileList = Array.from(files);
       
       for (const file of fileList) {
+        // Simple file size check (10MB)
+        if (file.size > 10 * 1024 * 1024) {
+          toast.error(`${file.name} is too large (max 10MB)`, { id: uploadToastId });
+          continue;
+        }
+
         toast.message(`Uploading ${file.name}...`, { id: uploadToastId });
         
-        const cleanName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-        const storageRef = ref(storage, `issues/attachments/${Date.now()}_${cleanName}`);
-        
-        console.log(`[Upload] Starting uploadBytes for ${file.name} to ${storageRef.fullPath}`);
-        const uploadResult = await Promise.race([
-          uploadBytes(storageRef, file, {
-            contentType: file.type,
-          }),
-          new Promise<never>((_, reject) => 
-            setTimeout(() => {
-              console.error(`[Upload] Timeout reached for ${file.name}`);
-              reject(new Error(`Upload of ${file.name} timed out after 120s`));
-            }, 120000)
-          )
-        ]);
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('path', `issues/attachments/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`);
 
-        const url = await getDownloadURL(uploadResult.ref);
-        uploadedAttachments.push({ name: file.name, url });
+        try {
+          const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.details || errorData.error || 'Upload failed');
+          }
+
+          const result = await response.json();
+          uploadedAttachments.push({ name: result.name, url: result.url });
+          console.log(`[Upload] ${file.name} successful:`, result.url);
+        } catch (err: any) {
+          console.error(`[Upload] Error uploading ${file.name}:`, err);
+          toast.error(`Failed to upload ${file.name}: ${err.message}`, { id: uploadToastId });
+          throw err;
+        }
       }
       
       setAttachments(prev => [...prev, ...uploadedAttachments]);

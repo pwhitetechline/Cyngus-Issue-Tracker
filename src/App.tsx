@@ -12,6 +12,7 @@ import { IssueList } from './components/IssueList';
 import { IssueForm } from './components/IssueForm';
 import { IssueDetail } from './components/IssueDetail';
 import { UserManagement } from './components/UserManagement';
+import { Settings } from './components/Settings';
 import { Toaster } from './components/ui/sonner';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ThemeProvider } from 'next-themes';
@@ -61,12 +62,7 @@ function AppContent() {
       case 'users':
         return <UserManagement />;
       case 'settings':
-        return (
-          <div className="flex flex-col items-center justify-center h-full text-slate-400">
-            <h2 className="text-2xl font-bold">Settings</h2>
-            <p>Profile and application settings coming soon.</p>
-          </div>
-        );
+        return <Settings />;
       default:
         return <Dashboard onIssueClick={handleIssueClick} />;
     }

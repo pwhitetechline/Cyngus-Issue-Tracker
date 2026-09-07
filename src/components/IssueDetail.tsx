@@ -74,8 +74,9 @@ import { Label } from './ui/label';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Skeleton } from './ui/skeleton';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { storage } from '../lib/firebase';
+import { uploadFileFallback } from '../lib/storageFallback';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 interface IssueDetailProps {
@@ -163,24 +164,26 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
       if (issue) {
         // Notify reporter if status changed by someone else
         if (issue.reporterId !== user?.uid) {
+          const reporterEmail = users.find(u => u.uid === issue.reporterId)?.email;
           await createNotification({
             userId: issue.reporterId,
             title: 'Issue Status Updated',
             message: `The status of your issue "${issue.title}" has been changed to ${status.replace('_', ' ')}.`,
             link: `/issues/${issueId}`,
             type: 'STATUS_CHANGED'
-          });
+          }, reporterEmail);
         }
         
         // Notify assignee if status changed by someone else
         if (issue.assigneeId && issue.assigneeId !== user?.uid && issue.assigneeId !== issue.reporterId) {
+          const assigneeEmail = users.find(u => u.uid === issue.assigneeId)?.email;
           await createNotification({
             userId: issue.assigneeId,
             title: 'Issue Status Updated',
             message: `The status of the issue "${issue.title}" assigned to you has been changed to ${status.replace('_', ' ')}.`,
             link: `/issues/${issueId}`,
             type: 'STATUS_CHANGED'
-          });
+          }, assigneeEmail);
         }
       }
     } catch (error) {
@@ -203,13 +206,14 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
       toast.success(assigneeId ? 'Assignee updated' : 'Issue unassigned');
 
       if (issue && assigneeId && assigneeId !== user?.uid) {
+        const assigneeEmail = users.find(u => u.uid === assigneeId)?.email;
         await createNotification({
           userId: assigneeId,
           title: 'New Issue Assigned',
           message: `You have been assigned to the issue: "${issue.title}"`,
           link: `/issues/${issueId}`,
           type: 'ISSUE_ASSIGNED'
-        });
+        }, assigneeEmail);
       }
     } catch (error) {
       toast.error('Failed to update assignee');
@@ -249,24 +253,26 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
       if (issue) {
         // Notify reporter
         if (issue.reporterId !== user?.uid) {
+          const reporterEmail = users.find(u => u.uid === issue.reporterId)?.email;
           await createNotification({
             userId: issue.reporterId,
             title: 'New Comment',
             message: `${user?.displayName} commented on your issue: "${issue.title}"`,
             link: `/issues/${issueId}`,
             type: 'COMMENT_ADDED'
-          });
+          }, reporterEmail);
         }
         
         // Notify assignee
         if (issue.assigneeId && issue.assigneeId !== user?.uid && issue.assigneeId !== issue.reporterId) {
+          const assigneeEmail = users.find(u => u.uid === issue.assigneeId)?.email;
           await createNotification({
             userId: issue.assigneeId,
             title: 'New Comment',
             message: `${user?.displayName} commented on an issue assigned to you: "${issue.title}"`,
             link: `/issues/${issueId}`,
             type: 'COMMENT_ADDED'
-          });
+          }, assigneeEmail);
         }
       }
     } catch (error) {
@@ -334,34 +340,31 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
           throw new Error(`File ${file.name} is too large (max 20MB)`);
         }
 
-        console.log(`[Upload] Processing: ${file.name} (${file.size} bytes)`);
         toast.message(`Uploading ${file.name}...`, { id: uploadToastId });
         
-        const cleanName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_');
-        const storagePath = `issues/${issueId}/attachments/${Date.now()}_${cleanName}`;
-        const storageRef = ref(storage, storagePath);
-        
-        // Use simple uploadBytes with a 120 second timeout
-        console.log(`[Upload] Starting uploadBytes for ${file.name} to ${storageRef.fullPath}`);
-        const uploadResult = await Promise.race([
-          uploadBytes(storageRef, file, {
-            contentType: file.type,
-            customMetadata: {
-              originalName: file.name,
-              uploadedBy: user?.uid || 'unknown'
-            }
-          }),
-          new Promise<never>((_, reject) => 
-            setTimeout(() => {
-              console.error(`[Upload] Timeout reached for ${file.name}`);
-              reject(new Error(`Upload of ${file.name} timed out after 120s. This might be a network issue or missing CORS configuration on the bucket.`));
-            }, 120000)
-          )
-        ]);
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('path', `issues/${issueId}/attachments/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`);
 
-        const url = await getDownloadURL(uploadResult.ref);
-        console.log(`[Upload] Finished: ${file.name} -> ${url}`);
-        newAttachments.push({ name: file.name, url });
+        try {
+          const response = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.details || errorData.error || 'Upload failed');
+          }
+
+          const result = await response.json();
+          console.log(`[Upload] Finished: ${file.name} -> ${result.url}`);
+          newAttachments.push({ name: result.name, url: result.url });
+        } catch (err: any) {
+          console.error(`[Upload] Error uploading ${file.name}:`, err);
+          toast.error(`Failed to upload ${file.name}: ${err.message}`, { id: uploadToastId });
+          throw err;
+        }
       }
 
       console.log('[Upload] Finalizing Firestore update');
@@ -370,29 +373,7 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
       toast.success('Files uploaded successfully', { id: uploadToastId });
     } catch (error) {
       console.error('[Upload] Detailed failure:', error);
-      const isTimeout = error instanceof Error && error.message.includes('timeout');
-      
-      if (isTimeout) {
-        toast.error('Upload Timed Out', {
-          id: uploadToastId,
-          description: 'This is likely a CORS issue in your Firebase bucket. Please check the Console for instructions.',
-          duration: 10000
-        });
-        
-        console.group('%c 🛠️ Firebase Storage Troubleshooting', 'color: white; background: #e11d48; font-size: 14px; padding: 4px; border-radius: 4px;');
-        console.log('If you see a CORS error above, you need to configure your bucket to allow the app origin.');
-        console.log('Run this command using gsutil or check the Firebase console:');
-        console.log(`gsutil cors set cors-json.json gs://${firebaseConfig.storageBucket}`);
-        console.log('Content of cors-json.json:');
-        console.log(JSON.stringify([{
-          "origin": [window.location.origin],
-          "method": ["GET", "PUT", "POST", "DELETE", "HEAD"],
-          "maxAgeSeconds": 3600
-        }], null, 2));
-        console.groupEnd();
-      } else {
-        toast.error(error instanceof Error ? `Upload failed: ${error.message}` : 'Failed to upload files', { id: uploadToastId });
-      }
+      toast.error(error instanceof Error ? `Upload failed: ${error.message}` : 'Failed to upload files', { id: uploadToastId });
     } finally {
       console.log('[Upload] Process complete');
       setUploading(false);

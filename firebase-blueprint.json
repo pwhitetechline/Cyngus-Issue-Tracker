@@ -110,6 +110,10 @@
     "/notifications/{notificationId}": {
       "schema": "Notification",
       "description": "User notifications"
+    },
+    "/attachments/{attachmentId}": {
+      "schema": "Attachment",
+      "description": "Fallback storage for attachments"
     }
   }
 }
