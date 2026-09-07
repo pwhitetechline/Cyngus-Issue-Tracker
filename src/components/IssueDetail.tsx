@@ -45,7 +45,11 @@ import {
   AlertCircle,
   ExternalLink,
   Image as ImageIcon,
-  X
+  X,
+  Loader2,
+  Plus,
+  Pencil,
+  Save
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../hooks/useAuth';
@@ -72,7 +76,7 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Skeleton } from './ui/skeleton';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../lib/firebase';
-import { Loader2, Plus, Pencil, Save, History, Paperclip, CheckCircle2, AlertCircle, ExternalLink, Image as ImageIcon, X } from 'lucide-react';
+import firebaseConfig from '../../firebase-applet-config.json';
 
 interface IssueDetailProps {
   issueId: string;
@@ -97,6 +101,7 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
   const [uploading, setUploading] = useState(false);
   const [isEditingIssue, setIsEditingIssue] = useState(false);
   const [editIssueData, setEditIssueData] = useState({ title: '', description: '' });
+  const [savingIssue, setSavingIssue] = useState(false);
   const [isUrlDialogOpen, setIsUrlDialogOpen] = useState(false);
   const [attachmentUrl, setAttachmentUrl] = useState('');
   const [attachmentName, setAttachmentName] = useState('');
@@ -467,7 +472,7 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div className="flex items-center gap-3">
                   <Badge className="bg-primary/10 text-primary border-primary/20">{issue.type}</Badge>
-                  <span className="text-sm text-muted-foreground font-mono">#CYG-{issue.id?.slice(0, 8).toUpperCase()}</span>
+                  <span className="text-sm text-muted-foreground font-mono">#WDB-{issue.id?.slice(0, 8).toUpperCase()}</span>
                 </div>
                 {(isAdmin || user?.uid === issue.reporterId) && !isEditingIssue && (
                   <Button variant="ghost" size="sm" onClick={startEditingIssue} className="text-muted-foreground hover:text-primary">
@@ -478,7 +483,7 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                 {isEditingIssue && (
                   <div className="flex items-center gap-2">
                     <Button variant="ghost" size="sm" onClick={cancelEditingIssue} disabled={savingIssue}>
-                      <CloseIcon className="w-4 h-4 mr-2" />
+                      <X className="w-4 h-4 mr-2" />
                       Cancel
                     </Button>
                     <Button size="sm" onClick={handleSaveIssue} disabled={savingIssue}>
@@ -646,9 +651,9 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                         </div>
                         {(isAdmin || user?.uid === comment.userId) && (
                           <DropdownMenu>
-                            <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" />}>
-                              <MoreVertical className="w-4 h-4" />
-                            </DropdownMenuTrigger>
+                    <DropdownMenuTrigger render={<Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" />}>
+                      <MoreVertical className="w-4 h-4" />
+                    </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuItem onClick={() => handleStartEdit(comment)}>
                                 Edit Comment
@@ -836,7 +841,7 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                     </Button>
                     
                     <Dialog open={isUrlDialogOpen} onOpenChange={setIsUrlDialogOpen}>
-                      <DialogTrigger asChild>
+                      <DialogTrigger render={
                         <Button 
                           variant="ghost" 
                           size="icon" 
@@ -845,7 +850,7 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                         >
                           <ExternalLink className="w-3 h-3" />
                         </Button>
-                      </DialogTrigger>
+                      } />
                       <DialogContent>
                         <DialogHeader>
                           <DialogTitle>Add Attachment via URL</DialogTitle>
@@ -901,7 +906,7 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                   } />
                   <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
-                      <DialogTitle>Audit Trail - #CYG-{issue.id?.slice(0, 8).toUpperCase()}</DialogTitle>
+                      <DialogTitle>Audit Trail - #WDB-{issue.id?.slice(0, 8).toUpperCase()}</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-6 mt-4">
                       {auditLogs.length === 0 ? (

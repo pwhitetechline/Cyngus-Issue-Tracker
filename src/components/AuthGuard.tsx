@@ -24,7 +24,7 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
                 <ShieldAlert className="w-10 h-10 text-primary" />
               </div>
             </div>
-            <CardTitle className="text-2xl font-bold">Cygnus Issue Tracker</CardTitle>
+            <CardTitle className="text-2xl font-bold">Web Direct Brands Issue Tracker</CardTitle>
             <CardDescription>
               Please sign in with your Google account to access the dashboard.
             </CardDescription>

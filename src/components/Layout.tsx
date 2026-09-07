@@ -65,7 +65,7 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
           <div className="bg-primary rounded-lg p-2 flex-shrink-0">
             <Bug className="w-6 h-6 text-primary-foreground" />
           </div>
-          {isSidebarOpen && <span className="font-bold text-xl tracking-tight text-foreground">Cygnus</span>}
+          {isSidebarOpen && <span className="font-bold text-xl tracking-tight text-foreground">Web Direct Brands</span>}
         </div>
 
         <nav className="flex-1 p-4 space-y-2">

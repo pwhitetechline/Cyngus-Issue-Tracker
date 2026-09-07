@@ -69,7 +69,7 @@ export function Dashboard({ onIssueClick }: DashboardProps) {
     <div className="space-y-8 max-w-7xl mx-auto">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold text-foreground tracking-tight">Team Overview</h1>
-        <p className="text-muted-foreground">Real-time metrics and workload distribution for Cygnus Software Solutions.</p>
+        <p className="text-muted-foreground">Real-time metrics and workload distribution for Web Direct Brands.</p>
       </div>
 
       {/* Stats Grid */}
