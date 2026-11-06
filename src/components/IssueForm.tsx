@@ -16,8 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/
 import { Badge } from './ui/badge';
 import { X, Plus, Send, Loader2, Image as ImageIcon, Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { storage } from '../lib/firebase';
+import { auth, storage } from '../lib/firebase';
 import { uploadFileFallback } from '../lib/storageFallback';
 
 interface IssueFormProps {
@@ -91,11 +90,18 @@ export function IssueForm({ onSuccess }: IssueFormProps) {
         
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('path', `issues/attachments/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`);
+        formData.append('issueId', 'new');
+
+        const headers: Record<string, string> = {};
+        if (auth.currentUser) {
+          const idToken = await auth.currentUser.getIdToken();
+          headers['Authorization'] = `Bearer ${idToken}`;
+        }
 
         try {
           const response = await fetch('/api/upload', {
             method: 'POST',
+            headers,
             body: formData,
           });
 

@@ -7,6 +7,8 @@ import bodyParser from "body-parser";
 import { Resend } from "resend";
 import { initializeApp as initializeClientApp } from "firebase/app";
 import { getStorage as getClientStorage, ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import { initializeApp as initializeAdminApp, getApps as getAdminApps } from "firebase-admin/app";
+import { getAuth as getAdminAuth } from "firebase-admin/auth";
 import multer from "multer";
 import fs from "fs";
 import xhr2 from "xhr2";
@@ -18,6 +20,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let storage: any;
+let adminAuth: any = null;
 
 function getStorageInstance() {
   if (!storage) {
@@ -35,10 +38,26 @@ function getStorageInstance() {
   return storage;
 }
 
+function getAdminAuthInstance() {
+  if (!adminAuth) {
+    try {
+      const configPath = path.join(__dirname, "firebase-applet-config.json");
+      const firebaseConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
+      if (!getAdminApps().length) {
+        initializeAdminApp({ projectId: firebaseConfig.projectId });
+      }
+      adminAuth = getAdminAuth();
+    } catch (error) {
+      console.error("Failed to initialize Firebase Admin Auth:", error);
+    }
+  }
+  return adminAuth;
+}
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 50 * 1024 * 1024, // 50MB
+    fileSize: 25 * 1024 * 1024, // 25MB safety cap per upload
   },
 });
 
@@ -118,25 +137,122 @@ async function startServer() {
     }
   });
 
-  app.post("/api/upload", upload.single("file"), async (req, res) => {
-    console.log("[Upload API] Received request");
+  // Allowed MIME types for uploaded attachments
+  const ALLOWED_MIME_TYPES = new Set([
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "image/svg+xml",
+    "image/bmp",
+    "image/tiff",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/plain",
+    "text/csv"
+  ]);
+
+  // Allowed file extensions
+  const ALLOWED_EXTENSIONS = new Set([
+    ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp", ".tiff",
+    ".pdf", ".doc", ".docx", ".txt", ".csv"
+  ]);
+
+  // Explicitly prohibited dangerous executable / script extensions
+  const PROHIBITED_EXTENSIONS = new Set([
+    ".exe", ".sh", ".bat", ".cmd", ".com", ".vbs", ".js", ".mjs", ".php",
+    ".py", ".rb", ".html", ".htm", ".xhtml", ".jsp", ".asp", ".aspx", ".jar", ".scr", ".dll"
+  ]);
+
+  // Rate limiter: maximum 30 upload requests per 60-second window per IP
+  const uploadRateLimits = new Map<string, { count: number; resetTime: number }>();
+  function checkRateLimit(ip: string): boolean {
+    const now = Date.now();
+    const record = uploadRateLimits.get(ip);
+    if (!record || now > record.resetTime) {
+      uploadRateLimits.set(ip, { count: 1, resetTime: now + 60000 });
+      return true;
+    }
+    if (record.count >= 30) {
+      return false;
+    }
+    record.count += 1;
+    return true;
+  }
+
+  // Authentication middleware for upload endpoint
+  async function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Unauthorized: Missing authentication credentials" });
+    }
+
+    const idToken = authHeader.split("Bearer ")[1]?.trim();
+    if (!idToken) {
+      return res.status(401).json({ error: "Unauthorized: Malformed token" });
+    }
+
+    const authInstance = getAdminAuthInstance();
+    if (!authInstance) {
+      console.warn("[Upload Auth] Admin auth not available, rejecting unverified upload");
+      return res.status(500).json({ error: "Authentication service unavailable" });
+    }
+
     try {
+      const decodedToken = await authInstance.verifyIdToken(idToken);
+      (req as any).user = decodedToken;
+      next();
+    } catch (err: any) {
+      console.error("[Upload Auth] Token verification failed:", err?.message || err);
+      return res.status(401).json({ error: "Unauthorized: Invalid or expired authentication token" });
+    }
+  }
+
+  app.post("/api/upload", requireAuth, upload.single("file"), async (req, res) => {
+    const user = (req as any).user;
+    console.log(`[Upload API] Authenticated request from user: ${user?.uid || "unknown"}`);
+    
+    try {
+      const clientIp = req.ip || req.socket.remoteAddress || "unknown";
+      if (!checkRateLimit(clientIp)) {
+        console.warn(`[Upload API] Rate limit exceeded for IP: ${clientIp}`);
+        return res.status(429).json({ error: "Upload rate limit exceeded. Please wait a minute before uploading more files." });
+      }
+
       if (!req.file) {
         console.error("[Upload API] No file in request");
         return res.status(400).json({ error: "No file uploaded" });
       }
 
-      const { path: destinationPath } = req.body;
-      if (!destinationPath) {
-        console.error("[Upload API] No destination path in request");
-        return res.status(400).json({ error: "No destination path provided" });
+      const originalName = req.file.originalname || "attachment";
+      const ext = path.extname(originalName).toLowerCase();
+
+      // Check for prohibited executable or script file extensions
+      if (PROHIBITED_EXTENSIONS.has(ext)) {
+        console.warn(`[Upload API] Blocked prohibited extension: ${ext}`);
+        return res.status(400).json({ error: `File type "${ext}" is not permitted for security reasons.` });
       }
 
-      console.log(`[Upload API] Uploading ${req.file.originalname} (${req.file.size} bytes) to ${destinationPath}`);
+      // Verify that extension and MIME type belong to the allowlist
+      if (!ALLOWED_EXTENSIONS.has(ext) || !ALLOWED_MIME_TYPES.has(req.file.mimetype)) {
+        console.warn(`[Upload API] Rejected unapproved file: ${originalName} (MIME: ${req.file.mimetype}, Ext: ${ext})`);
+        return res.status(400).json({ 
+          error: "Invalid file type. Allowed formats: images (.png, .jpg, .gif, .webp, .svg), PDF (.pdf), Word (.doc, .docx), and text (.txt, .csv)." 
+        });
+      }
+
+      // Safe canonical destination path construction (prevents directory traversal)
+      const sanitizedBaseName = path.basename(originalName).replace(/[^a-zA-Z0-9.\-_]/g, "_");
+      const issueId = req.body.issueId ? String(req.body.issueId).replace(/[^a-zA-Z0-9_-]/g, "") : "general";
+      const timestamp = Date.now();
+      const canonicalDestination = `issues/${issueId}/attachments/${timestamp}_${sanitizedBaseName}`;
+
+      console.log(`[Upload API] Storing validated ${sanitizedBaseName} (${req.file.size} bytes) to ${canonicalDestination}`);
       
       try {
         const storageInstance = getStorageInstance();
-        const fileRef = storageRef(storageInstance, destinationPath);
+        const fileRef = storageRef(storageInstance, canonicalDestination);
         
         const uploadResult = await uploadBytes(fileRef, new Uint8Array(req.file.buffer), {
           contentType: req.file.mimetype
@@ -144,23 +260,23 @@ async function startServer() {
         
         const url = await getDownloadURL(uploadResult.ref);
         console.log(`[Upload API] Firebase Upload successful: ${url}`);
-        return res.json({ name: req.file.originalname, url });
+        return res.json({ name: sanitizedBaseName, url });
       } catch (firebaseError) {
         console.warn("[Upload API] Firebase Storage failed, using local fallback:", firebaseError);
         
-        // Local Fallback: Save to public/uploads
-        const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+        // Local Fallback: Save safely to public/uploads
+        const uploadsDir = path.join(process.cwd(), "public", "uploads");
         if (!fs.existsSync(uploadsDir)) {
           fs.mkdirSync(uploadsDir, { recursive: true });
         }
         
-        const fileName = `${Date.now()}_${req.file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`;
-        const localPath = path.join(uploadsDir, fileName);
+        const localFileName = `${timestamp}_${sanitizedBaseName}`;
+        const localPath = path.join(uploadsDir, localFileName);
         fs.writeFileSync(localPath, req.file.buffer);
         
-        const localUrl = `/uploads/${fileName}`;
+        const localUrl = `/uploads/${localFileName}`;
         console.log(`[Upload API] Local Fallback successful: ${localUrl}`);
-        return res.json({ name: req.file.originalname, url: localUrl });
+        return res.json({ name: sanitizedBaseName, url: localUrl });
       }
     } catch (error) {
       console.error("[Upload API] Fatal error:", error);

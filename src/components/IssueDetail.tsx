@@ -76,8 +76,7 @@ import { Label } from './ui/label';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Skeleton } from './ui/skeleton';
-import { ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { storage } from '../lib/firebase';
+import { auth, storage } from '../lib/firebase';
 import { uploadFileFallback } from '../lib/storageFallback';
 import firebaseConfig from '../../firebase-applet-config.json';
 
@@ -124,10 +123,16 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
   const handleAddUrlAttachment = async () => {
     if (!attachmentUrl.trim() || !attachmentName.trim() || !issue) return;
     
+    const trimmedUrl = attachmentUrl.trim();
+    if (!/^https?:\/\//i.test(trimmedUrl)) {
+      toast.error('URL must start with http:// or https://');
+      return;
+    }
+
     setAddingUrl(true);
     try {
       const newAttachments = [...(issue.attachments || [])];
-      newAttachments.push({ name: attachmentName, url: attachmentUrl });
+      newAttachments.push({ name: attachmentName.trim(), url: trimmedUrl });
       await updateIssue(issueId, { attachments: newAttachments });
       toast.success('URL attachment added');
       setIsUrlDialogOpen(false);
@@ -357,11 +362,18 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
         
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('path', `issues/${issueId}/attachments/${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')}`);
+        formData.append('issueId', issueId);
+
+        const headers: Record<string, string> = {};
+        if (auth.currentUser) {
+          const idToken = await auth.currentUser.getIdToken();
+          headers['Authorization'] = `Bearer ${idToken}`;
+        }
 
         try {
           const response = await fetch('/api/upload', {
             method: 'POST',
+            headers,
             body: formData,
           });
 
