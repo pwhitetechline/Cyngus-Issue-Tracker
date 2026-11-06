@@ -167,11 +167,13 @@ export function Layout({ children, activeTab, setActiveTab }: LayoutProps) {
                               notification.type === 'ISSUE_ASSIGNED' && "bg-blue-500/10 text-blue-500",
                               notification.type === 'COMMENT_ADDED' && "bg-green-500/10 text-green-500",
                               notification.type === 'STATUS_CHANGED' && "bg-amber-500/10 text-amber-500",
+                              notification.type === 'ISSUE_CREATED' && "bg-purple-500/10 text-purple-500",
                               !notification.type && "bg-primary/10 text-primary"
                             )}>
                               {notification.type === 'ISSUE_ASSIGNED' && <UserPlus className="w-3 h-3" />}
                               {notification.type === 'COMMENT_ADDED' && <MessageSquare className="w-3 h-3" />}
                               {notification.type === 'STATUS_CHANGED' && <RefreshCw className="w-3 h-3" />}
+                              {notification.type === 'ISSUE_CREATED' && <PlusCircle className="w-3 h-3" />}
                               {!notification.type && <Bell className="w-3 h-3" />}
                             </div>
                             <span className={cn(

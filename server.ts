@@ -83,20 +83,38 @@ async function startServer() {
     const resendClient = getResend();
 
     if (!resendClient) {
+      console.warn("[Email API] Resend client not initialized (missing API key)");
       return res.status(500).json({ error: "Email service not configured" });
     }
 
     try {
+      const normalizedTo = typeof to === "string" 
+        ? to.trim().toLowerCase() 
+        : Array.isArray(to) 
+          ? to.map((e: any) => String(e).trim().toLowerCase()) 
+          : to;
+
       const data = await resendClient.emails.send({
         from: "Web Direct Brands <notifications@resend.dev>",
-        to,
+        to: normalizedTo,
         subject,
         html,
       });
-      res.json(data);
-    } catch (error) {
-      console.error("Error sending email:", error);
-      res.status(500).json({ error: "Failed to send email" });
+
+      if (data.error) {
+        console.error("[Email API] Resend returned error:", data.error);
+        return res.status(data.error.statusCode || 400).json({ 
+          error: data.error.message, 
+          name: data.error.name,
+          details: data.error 
+        });
+      }
+
+      console.log(`[Email API] Email dispatched successfully to ${normalizedTo}, ID: ${data.data?.id}`);
+      return res.json({ success: true, id: data.data?.id });
+    } catch (error: any) {
+      console.error("[Email API] Error sending email:", error);
+      return res.status(500).json({ error: error?.message || "Failed to send email" });
     }
   });
 

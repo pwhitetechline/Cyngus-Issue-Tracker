@@ -76,7 +76,7 @@ export const NotificationSchema = z.object({
   message: z.string(),
   link: z.string().optional(),
   read: z.boolean().default(false),
-  type: z.enum(['ISSUE_ASSIGNED', 'COMMENT_ADDED', 'STATUS_CHANGED', 'MENTION']).optional(),
+  type: z.enum(['ISSUE_ASSIGNED', 'COMMENT_ADDED', 'STATUS_CHANGED', 'MENTION', 'ISSUE_CREATED']).optional(),
   createdAt: z.any().optional(),
 });
 

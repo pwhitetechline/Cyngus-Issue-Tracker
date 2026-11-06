@@ -33,6 +33,7 @@ export function Settings() {
     assignments: true,
     statusChanges: true,
     comments: true,
+    issueCreation: true,
     emailDigest: false
   });
 
@@ -154,6 +155,24 @@ export function Settings() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <Label>New Issues Created</Label>
+                      {isAdmin && (
+                        <Badge variant="outline" className="text-[10px] bg-primary/10 text-primary border-primary/20">
+                          Admin
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground italic">Notify admins when any new issue is created in the organization.</p>
+                  </div>
+                  <Switch 
+                    checked={notifications.issueCreation} 
+                    onCheckedChange={(val) => setNotifications(n => ({...n, issueCreation: val}))} 
+                  />
+                </div>
+                <Separator />
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
                     <Label>New Assignments</Label>

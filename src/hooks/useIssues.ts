@@ -13,8 +13,9 @@ import {
   getDoc
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Issue, IssueStatus, IssuePriority, IssueType } from '../types';
+import { Issue, IssueStatus, IssuePriority, IssueType, User } from '../types';
 import { useAuth } from './useAuth';
+import { useNotifications } from './useNotifications';
 import { useEffect, useState } from 'react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
 
@@ -75,6 +76,7 @@ export function useIssue(id: string) {
 
 export function useIssueActions() {
   const { user } = useAuth();
+  const { createNotification } = useNotifications();
 
   const createIssue = async (data: Partial<Issue>) => {
     if (!user) throw new Error('Must be logged in');
@@ -99,6 +101,51 @@ export function useIssueActions() {
         newValue: newIssue,
         timestamp: serverTimestamp(),
       }).catch(err => console.error('Failed to create audit log:', err));
+
+      // Notify admins of new issue creation (in-app alert + email)
+      try {
+        const usersSnap = await getDocs(collection(db, 'users'));
+        const allUsers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() } as User));
+        
+        // Find all admin accounts (role === 'ADMIN' or designated admin email)
+        const admins = allUsers.filter(u => 
+          u.role === 'ADMIN' || u.email?.toLowerCase() === 'pwhite.xm@gmail.com'
+        );
+
+        const ticketNum = `#WDB-${docRef.id.slice(0, 8).toUpperCase()}`;
+        const issueTitle = data.title || 'Untitled Issue';
+        const priorityLabel = (data.priority || 'MEDIUM').toLowerCase();
+        const typeLabel = (data.type || 'BUG').toLowerCase();
+        const reporterName = user.displayName || user.email || 'A team member';
+
+        const notifiedUids = new Set<string>();
+
+        for (const admin of admins) {
+          if (!admin.uid || notifiedUids.has(admin.uid)) continue;
+          notifiedUids.add(admin.uid);
+
+          await createNotification({
+            userId: admin.uid,
+            title: `New Issue Created: ${issueTitle}`,
+            message: `${reporterName} created ${ticketNum} (${priorityLabel} priority ${typeLabel}): "${issueTitle}".`,
+            link: `/issues/${docRef.id}`,
+            type: 'ISSUE_CREATED'
+          }, admin.email);
+        }
+
+        // Safety fallback: if no admin document in collection, ensure pwhite.xm@gmail.com gets notified
+        if (notifiedUids.size === 0) {
+          await createNotification({
+            userId: user.uid,
+            title: `New Issue Created: ${issueTitle}`,
+            message: `${reporterName} created ${ticketNum} (${priorityLabel} priority ${typeLabel}): "${issueTitle}".`,
+            link: `/issues/${docRef.id}`,
+            type: 'ISSUE_CREATED'
+          }, 'pwhite.xm@gmail.com');
+        }
+      } catch (notifErr) {
+        console.error('Failed to notify admins of issue creation:', notifErr);
+      }
 
       return docRef.id;
     } catch (error) {
