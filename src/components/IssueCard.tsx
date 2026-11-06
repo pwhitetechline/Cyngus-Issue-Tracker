@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Issue, IssueStatus, IssuePriority, IssueType, User as UserType } from '../types';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
@@ -11,10 +12,13 @@ import {
   Paperclip,
   ArrowUpCircle,
   ArrowDownCircle,
-  MinusCircle
+  MinusCircle,
+  Download,
+  Loader2
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '../lib/utils';
+import { downloadIssueAsJson } from '../lib/issueExport';
 
 interface IssueCardProps {
   issue: Issue;
@@ -56,9 +60,20 @@ function LightbulbIcon({ className }: { className?: string }) {
 }
 
 export function IssueCard({ issue, users = [], onClick }: IssueCardProps) {
+  const [isExporting, setIsExporting] = useState(false);
   const createdAt = issue.createdAt?.toDate ? issue.createdAt.toDate() : new Date();
   const reporter = users.find(u => u.uid === issue.reporterId);
   const assignee = users.find(u => u.uid === issue.assigneeId);
+
+  const handleExport = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsExporting(true);
+    try {
+      await downloadIssueAsJson(issue, users);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   return (
     <Card 
@@ -78,7 +93,17 @@ export function IssueCard({ issue, users = [], onClick }: IssueCardProps) {
               {issue.title}
             </CardTitle>
           </div>
-          <div className="flex-shrink-0">
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            <button
+              type="button"
+              onClick={handleExport}
+              disabled={isExporting}
+              title="Export issue to JSON"
+              aria-label="Export issue to JSON"
+              className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors opacity-70 group-hover:opacity-100 focus:opacity-100"
+            >
+              {isExporting ? <Loader2 className="w-4 h-4 animate-spin text-primary" /> : <Download className="w-4 h-4" />}
+            </button>
             {priorityIcons[issue.priority]}
           </div>
         </div>

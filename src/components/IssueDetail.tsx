@@ -49,8 +49,10 @@ import {
   Loader2,
   Plus,
   Pencil,
-  Save
+  Save,
+  Download
 } from 'lucide-react';
+import { downloadIssueAsJson } from '../lib/issueExport';
 import { formatDistanceToNow } from 'date-fns';
 import { useAuth } from '../hooks/useAuth';
 import { useNotifications } from '../hooks/useNotifications';
@@ -107,6 +109,17 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
   const [attachmentUrl, setAttachmentUrl] = useState('');
   const [attachmentName, setAttachmentName] = useState('');
   const [addingUrl, setAddingUrl] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExportJson = async () => {
+    if (!issue) return;
+    setExporting(true);
+    try {
+      await downloadIssueAsJson(issue, users, comments, auditLogs);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const handleAddUrlAttachment = async () => {
     if (!attachmentUrl.trim() || !attachmentName.trim() || !issue) return;
@@ -455,24 +468,37 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                   <Badge className="bg-primary/10 text-primary border-primary/20">{issue.type}</Badge>
                   <span className="text-sm text-muted-foreground font-mono">#WDB-{issue.id?.slice(0, 8).toUpperCase()}</span>
                 </div>
-                {(isAdmin || user?.uid === issue.reporterId) && !isEditingIssue && (
-                  <Button variant="ghost" size="sm" onClick={startEditingIssue} className="text-muted-foreground hover:text-primary">
-                    <Pencil className="w-4 h-4 mr-2" />
-                    Edit
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleExportJson} 
+                    disabled={exporting}
+                    className="border-border text-muted-foreground hover:text-foreground text-xs"
+                    title="Export this issue to JSON"
+                  >
+                    {exporting ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
+                    Export JSON
                   </Button>
-                )}
-                {isEditingIssue && (
-                  <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm" onClick={cancelEditingIssue} disabled={savingIssue}>
-                      <X className="w-4 h-4 mr-2" />
-                      Cancel
+                  {(isAdmin || user?.uid === issue.reporterId) && !isEditingIssue && (
+                    <Button variant="ghost" size="sm" onClick={startEditingIssue} className="text-muted-foreground hover:text-primary">
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Edit
                     </Button>
-                    <Button size="sm" onClick={handleSaveIssue} disabled={savingIssue}>
-                      {savingIssue ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
-                      Save
-                    </Button>
-                  </div>
-                )}
+                  )}
+                  {isEditingIssue && (
+                    <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="sm" onClick={cancelEditingIssue} disabled={savingIssue}>
+                        <X className="w-4 h-4 mr-2" />
+                        Cancel
+                      </Button>
+                      <Button size="sm" onClick={handleSaveIssue} disabled={savingIssue}>
+                        {savingIssue ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                        Save
+                      </Button>
+                    </div>
+                  )}
+                </div>
               </div>
               {isEditingIssue ? (
                 <Input 
@@ -878,6 +904,15 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                 <h4 className="font-bold text-foreground">Quick Actions</h4>
               </div>
               <div className="space-y-2">
+                <Button 
+                  variant="outline" 
+                  onClick={handleExportJson}
+                  disabled={exporting}
+                  className="w-full justify-start bg-card border-border text-foreground hover:bg-accent"
+                >
+                  {exporting ? <Loader2 className="w-4 h-4 mr-2 animate-spin text-primary" /> : <Download className="w-4 h-4 mr-2 text-primary" />}
+                  {exporting ? 'Exporting JSON...' : 'Export to JSON'}
+                </Button>
                 <Dialog open={showAuditTrail} onOpenChange={setShowAuditTrail}>
                   <DialogTrigger render={
                     <Button variant="outline" className="w-full justify-start bg-card border-border text-foreground hover:bg-accent">
