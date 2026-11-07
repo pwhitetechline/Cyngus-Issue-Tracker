@@ -16,8 +16,9 @@ import { db } from '../lib/firebase';
 import { Issue, IssueStatus, IssuePriority, IssueType, User } from '../types';
 import { useAuth } from './useAuth';
 import { useNotifications } from './useNotifications';
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
+import { determineAutoAssignee, getAutomationSettings } from '../lib/automation';
 
 export function useIssues(filters?: { status?: IssueStatus; priority?: IssuePriority; type?: IssueType }) {
   const [issues, setIssues] = useState<Issue[]>([]);
@@ -80,14 +81,44 @@ export function useIssueActions() {
 
   const createIssue = async (data: Partial<Issue>) => {
     if (!user) throw new Error('Must be logged in');
+
+    const settings = getAutomationSettings();
+    let assignedUserId = data.assigneeId;
+    let initialStatus: IssueStatus = data.status || 'OPEN';
+
+    // Query users & active issues to calculate automated assignment
+    let allUsers: User[] = [];
+    try {
+      const usersSnap = await getDocs(collection(db, 'users'));
+      allUsers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() } as User));
+
+      if (!assignedUserId) {
+        const issuesSnap = await getDocs(collection(db, 'issues'));
+        const activeIssues = issuesSnap.docs.map(d => ({ id: d.id, ...d.data() } as Issue));
+        const autoUser = determineAutoAssignee(data, allUsers, activeIssues, settings);
+        if (autoUser) {
+          assignedUserId = autoUser.uid;
+        }
+      }
+
+      if (assignedUserId && settings.autoAdvanceOnAssign && initialStatus === 'OPEN') {
+        initialStatus = 'IN_PROGRESS';
+      }
+    } catch (autoErr) {
+      console.warn('Automation calculation fallback:', autoErr);
+    }
     
-    const newIssue = {
+    const newIssue: any = {
       ...data,
       reporterId: user.uid,
-      status: 'OPEN',
+      status: initialStatus,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
     };
+
+    if (assignedUserId) {
+      newIssue.assigneeId = assignedUserId;
+    }
 
     const path = 'issues';
     try {
@@ -102,12 +133,8 @@ export function useIssueActions() {
         timestamp: serverTimestamp(),
       }).catch(err => console.error('Failed to create audit log:', err));
 
-      // Notify admins of new issue creation (in-app alert + email)
+      // Notify admins and assignee of new issue creation (in-app alert + email)
       try {
-        const usersSnap = await getDocs(collection(db, 'users'));
-        const allUsers = usersSnap.docs.map(d => ({ uid: d.id, ...d.data() } as User));
-        
-        // Find all admin accounts (role === 'ADMIN' or designated admin email)
         const admins = allUsers.filter(u => 
           u.role === 'ADMIN' || u.email?.toLowerCase() === 'pwhite.xm@gmail.com'
         );
@@ -131,6 +158,21 @@ export function useIssueActions() {
             link: `/issues/${docRef.id}`,
             type: 'ISSUE_CREATED'
           }, admin.email);
+        }
+
+        // Notify assigned user if different from reporter and not already notified as admin
+        if (assignedUserId && !notifiedUids.has(assignedUserId)) {
+          const assigneeUser = allUsers.find(u => u.uid === assignedUserId);
+          if (assigneeUser) {
+            notifiedUids.add(assignedUserId);
+            await createNotification({
+              userId: assignedUserId,
+              title: `Assigned: ${issueTitle}`,
+              message: `You were assigned ${ticketNum} (${priorityLabel} priority): "${issueTitle}".`,
+              link: `/issues/${docRef.id}`,
+              type: 'ISSUE_ASSIGNED'
+            }, assigneeUser.email);
+          }
         }
 
         // Safety fallback: if no admin document in collection, ensure pwhite.xm@gmail.com gets notified

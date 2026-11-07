@@ -10,7 +10,9 @@ import {
   Shield, 
   LogOut,
   Mail,
-  UserCircle
+  UserCircle,
+  Zap,
+  Sliders
 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
@@ -24,6 +26,8 @@ import {
   TabsList, 
   TabsTrigger 
 } from './ui/tabs';
+import { getAutomationSettings, saveAutomationSettings, AutomationSettings } from '../lib/automation';
+import { toast } from 'sonner';
 
 export function Settings() {
   const { user, logout, isAdmin } = useAuth();
@@ -36,6 +40,15 @@ export function Settings() {
     issueCreation: true,
     emailDigest: false
   });
+
+  const [automation, setAutomation] = useState<AutomationSettings>(() => getAutomationSettings());
+
+  const updateAutomationRule = (key: keyof AutomationSettings, value: boolean) => {
+    const updated = { ...automation, [key]: value };
+    setAutomation(updated);
+    saveAutomationSettings(updated);
+    toast.success('Automation preferences updated');
+  };
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -203,6 +216,64 @@ export function Settings() {
                   <Switch 
                     checked={notifications.comments} 
                     onCheckedChange={(val) => setNotifications(n => ({...n, comments: val}))} 
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Workflow Automation Section */}
+          <Card className="border-border bg-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="w-5 h-5 text-amber-500" />
+                Workflow Automation
+              </CardTitle>
+              <CardDescription>Configure smart assignment routing and automated status transitions.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="font-medium text-foreground">Workload-Based Auto-Assignment</Label>
+                    <p className="text-sm text-muted-foreground italic">
+                      Automatically route unassigned incoming issues to active team members with the lowest active issue count.
+                    </p>
+                  </div>
+                  <Switch 
+                    checked={automation.autoAssignEnabled} 
+                    onCheckedChange={(val) => updateAutomationRule('autoAssignEnabled', val)} 
+                  />
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <Label className="font-medium text-foreground">Critical Escalation Routing</Label>
+                      <Badge variant="outline" className="text-[10px] bg-red-500/10 text-red-600 border-red-500/20">
+                        High Priority
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground italic">
+                      Directly route tickets with CRITICAL severity to the administrator team (PWhite.XM@gmail.com).
+                    </p>
+                  </div>
+                  <Switch 
+                    checked={automation.criticalEscalateToAdmin} 
+                    onCheckedChange={(val) => updateAutomationRule('criticalEscalateToAdmin', val)} 
+                  />
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="font-medium text-foreground">Auto-Advance on Assignment</Label>
+                    <p className="text-sm text-muted-foreground italic">
+                      Automatically advance ticket status from OPEN to IN PROGRESS upon member assignment.
+                    </p>
+                  </div>
+                  <Switch 
+                    checked={automation.autoAdvanceOnAssign} 
+                    onCheckedChange={(val) => updateAutomationRule('autoAdvanceOnAssign', val)} 
                   />
                 </div>
               </div>

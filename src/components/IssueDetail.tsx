@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useIssue, useIssueActions } from '../hooks/useIssues';
 import { useUsers } from '../hooks/useUsers';
 import { Issue, IssueStatus, IssuePriority, Comment } from '../types';
+import { getAutomationSettings } from '../lib/automation';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { 
@@ -220,8 +221,21 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
 
   const handleAssigneeChange = async (assigneeId: string | null) => {
     try {
-      await updateIssue(issueId, { assigneeId });
-      toast.success(assigneeId ? 'Assignee updated' : 'Issue unassigned');
+      const settings = getAutomationSettings();
+      const autoAdvance = !!assigneeId && issue?.status === 'OPEN' && settings.autoAdvanceOnAssign;
+      const updatePayload: Partial<Issue> = { assigneeId };
+      if (autoAdvance) {
+        updatePayload.status = 'IN_PROGRESS';
+      }
+
+      await updateIssue(issueId, updatePayload);
+      toast.success(
+        autoAdvance
+          ? 'Assignee assigned · Automatically moved to In Progress'
+          : assigneeId
+          ? 'Assignee updated'
+          : 'Issue unassigned'
+      );
 
       if (issue && assigneeId && assigneeId !== user?.uid) {
         const assigneeEmail = users.find(u => u.uid === assigneeId)?.email;

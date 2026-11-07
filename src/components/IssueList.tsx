@@ -3,6 +3,9 @@ import { useIssues } from '../hooks/useIssues';
 import { useUsers } from '../hooks/useUsers';
 import { Issue, IssueStatus, IssuePriority, IssueType } from '../types';
 import { IssueCard } from './IssueCard';
+import { KanbanBoard } from './KanbanBoard';
+import { PrintableReportModal } from './PrintableReportModal';
+import { exportIssuesToCsv } from '../lib/reportExport';
 import { Input } from './ui/input';
 import { 
   Select, 
@@ -12,7 +15,7 @@ import {
   SelectValue 
 } from './ui/select';
 import { Button } from './ui/button';
-import { Search, Filter, SlidersHorizontal, LayoutGrid, List as ListIcon } from 'lucide-react';
+import { Search, Filter, SlidersHorizontal, LayoutGrid, List as ListIcon, Columns3, Download } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import { cn } from '../lib/utils';
 
@@ -23,7 +26,7 @@ interface IssueListProps {
 export function IssueList({ onIssueClick }: IssueListProps) {
   const [filters, setFilters] = useState<{ status?: IssueStatus; priority?: IssuePriority; type?: IssueType }>({});
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'kanban'>('grid');
   const { issues, loading: issuesLoading } = useIssues(filters);
   const { users, loading: usersLoading } = useUsers();
 
@@ -40,26 +43,53 @@ export function IssueList({ onIssueClick }: IssueListProps) {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold text-foreground tracking-tight">Issue Explorer</h1>
-          <p className="text-muted-foreground">Search, filter, and manage all reported issues across the organization.</p>
+          <p className="text-muted-foreground">Search, filter, track pipeline status, and generate organizational reports.</p>
         </div>
         
-        <div className="flex items-center gap-2 bg-card p-1 rounded-lg border border-border shadow-sm">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Executive & CSV Reports */}
+          <PrintableReportModal issues={filteredIssues} users={users} />
+          
           <Button 
-            variant={viewMode === 'grid' ? 'secondary' : 'ghost'} 
+            variant="outline" 
             size="sm" 
-            onClick={() => setViewMode('grid')}
-            className="h-8 w-8 p-0"
+            onClick={() => exportIssuesToCsv(filteredIssues, users)}
+            className="h-9 gap-1.5 border-border"
           >
-            <LayoutGrid className="w-4 h-4" />
+            <Download className="w-4 h-4 text-primary" />
+            Export CSV
           </Button>
-          <Button 
-            variant={viewMode === 'list' ? 'secondary' : 'ghost'} 
-            size="sm" 
-            onClick={() => setViewMode('list')}
-            className="h-8 w-8 p-0"
-          >
-            <ListIcon className="w-4 h-4" />
-          </Button>
+
+          {/* View Mode Switcher */}
+          <div className="flex items-center gap-1 bg-card p-1 rounded-lg border border-border shadow-xs">
+            <Button 
+              variant={viewMode === 'grid' ? 'secondary' : 'ghost'} 
+              size="sm" 
+              onClick={() => setViewMode('grid')}
+              title="Grid View"
+              className="h-8 w-8 p-0"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </Button>
+            <Button 
+              variant={viewMode === 'list' ? 'secondary' : 'ghost'} 
+              size="sm" 
+              onClick={() => setViewMode('list')}
+              title="List View"
+              className="h-8 w-8 p-0"
+            >
+              <ListIcon className="w-4 h-4" />
+            </Button>
+            <Button 
+              variant={viewMode === 'kanban' ? 'secondary' : 'ghost'} 
+              size="sm" 
+              onClick={() => setViewMode('kanban')}
+              title="Kanban Board View"
+              className="h-8 w-8 p-0"
+            >
+              <Columns3 className="w-4 h-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -112,14 +142,16 @@ export function IssueList({ onIssueClick }: IssueListProps) {
         </div>
       </div>
 
-      {/* Issues Grid/List */}
+      {/* Issues Content (Grid / List / Kanban) */}
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map(i => <Skeleton key={i} className="h-64 rounded-xl" />)}
         </div>
       ) : (
         <>
-          {filteredIssues.length > 0 ? (
+          {viewMode === 'kanban' ? (
+            <KanbanBoard issues={filteredIssues} users={users} onIssueClick={onIssueClick} />
+          ) : filteredIssues.length > 0 ? (
             <div className={cn(
               viewMode === 'grid' 
                 ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" 
