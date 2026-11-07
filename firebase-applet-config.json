@@ -1,12 +1,12 @@
 {
-  "projectId": "unrulysites",
-  "appId": "1:777686865361:web:378f288ab32f96f3f63cf0",
-  "apiKey": "AIzaSyAubPWLYh-b8T96mdbny-wfl1h8KvdMLe4",
-  "authDomain": "unrulysites.firebaseapp.com",
+  "projectId": "gen-lang-client-0431525341",
+  "appId": "1:321152230337:web:a88800dfc07d0b18c40540",
+  "apiKey": "AIzaSyCBIeaiTMdUbnKDtwZY5FoXKuHqXUIWKxQ",
+  "authDomain": "gen-lang-client-0431525341.firebaseapp.com",
   "firestoreDatabaseId": "ai-studio-cygnussoftwareso-026d8dc4-485a-4e34-9a56-7dd7b0359aae",
-  "storageBucket": "unrulysites.firebasestorage.app",
-  "messagingSenderId": "777686865361",
+  "storageBucket": "gen-lang-client-0431525341.firebasestorage.app",
+  "messagingSenderId": "321152230337",
   "measurementId": "",
-  "oAuthClientId": "777686865361-14pgjngf9umtnrthcc4q9d3tico04k09.apps.googleusercontent.com",
+  "oAuthClientId": "321152230337-tb83g199pdcnc1cb472r84d5ia48uk9d.apps.googleusercontent.com",
   "recaptchaSiteKey": ""
 }

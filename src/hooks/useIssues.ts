@@ -29,7 +29,7 @@ export function useIssues(filters?: { status?: IssueStatus; priority?: IssuePrio
     if (!user) return;
 
     const path = 'issues';
-    let q = query(collection(db, path), orderBy('createdAt', 'desc'));
+    let q = query(collection(db, path));
 
     if (filters?.status) q = query(q, where('status', '==', filters.status));
     if (filters?.priority) q = query(q, where('priority', '==', filters.priority));
@@ -40,10 +40,20 @@ export function useIssues(filters?: { status?: IssueStatus; priority?: IssuePrio
         id: doc.id,
         ...doc.data()
       })) as Issue[];
+
+      // Sort client-side so missing/pending timestamps never cause index rejection
+      issuesData.sort((a, b) => {
+        const timeA = a.createdAt?.toDate ? a.createdAt.toDate().getTime() : (a.createdAt ? new Date(a.createdAt).getTime() : 0);
+        const timeB = b.createdAt?.toDate ? b.createdAt.toDate().getTime() : (b.createdAt ? new Date(b.createdAt).getTime() : 0);
+        return timeB - timeA;
+      });
+
       setIssues(issuesData);
       setLoading(false);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, path);
+      console.error('Firestore useIssues error:', error);
+      handleFirestoreError(error, OperationType.LIST, path, false);
+      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -66,7 +76,8 @@ export function useIssue(id: string) {
       }
       setLoading(false);
     }, (error) => {
-      handleFirestoreError(error, OperationType.GET, path);
+      handleFirestoreError(error, OperationType.GET, path, false);
+      setLoading(false);
     });
 
     return () => unsubscribe();

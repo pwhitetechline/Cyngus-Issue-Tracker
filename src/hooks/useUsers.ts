@@ -16,7 +16,8 @@ export function useUsers() {
       setUsers(snapshot.docs.map(doc => ({ ...doc.data() } as User)));
       setLoading(false);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, path);
+      handleFirestoreError(error, OperationType.LIST, path, false);
+      setLoading(false);
     });
 
     return () => unsubscribe();

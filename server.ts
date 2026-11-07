@@ -322,11 +322,7 @@ async function startServer() {
   }
   app.use('/uploads', express.static(uploadsDir));
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
-  });
-
-  // Vite middleware for development
+  // Vite middleware for development or static dist files for production
   if (process.env.NODE_ENV !== "production") {
     console.log("[Server] Initializing Vite...");
     const vite = await createViteServer({
@@ -349,6 +345,10 @@ async function startServer() {
       error: "Internal Server Error", 
       details: err.message 
     });
+  });
+
+  app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on http://localhost:${PORT}`);
   });
 }
 

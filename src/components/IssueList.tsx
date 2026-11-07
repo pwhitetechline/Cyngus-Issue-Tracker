@@ -32,11 +32,13 @@ export function IssueList({ onIssueClick }: IssueListProps) {
 
   const loading = issuesLoading || usersLoading;
 
-  const filteredIssues = issues.filter(issue => 
-    issue.title.toLowerCase().includes(search.toLowerCase()) ||
-    issue.description.toLowerCase().includes(search.toLowerCase()) ||
-    issue.labels.some(l => l.toLowerCase().includes(search.toLowerCase()))
-  );
+  const filteredIssues = issues.filter(issue => {
+    const s = search.toLowerCase();
+    const titleMatch = (issue.title || '').toLowerCase().includes(s);
+    const descMatch = (issue.description || '').toLowerCase().includes(s);
+    const labelMatch = Array.isArray(issue.labels) && issue.labels.some(l => (l || '').toLowerCase().includes(s));
+    return titleMatch || descMatch || labelMatch;
+  });
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">

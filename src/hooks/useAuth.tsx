@@ -32,30 +32,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setFirebaseUser(fUser);
       
       if (fUser) {
-        const userDoc = await getDoc(doc(db, 'users', fUser.uid));
-        
-        if (userDoc.exists()) {
-          const userData = userDoc.data() as User;
-          if (fUser.email?.toLowerCase() === 'pwhite.xm@gmail.com' && userData.role !== 'ADMIN') {
-            await setDoc(doc(db, 'users', fUser.uid), { role: 'ADMIN' }, { merge: true });
-            setUser({ ...userData, role: 'ADMIN' });
+        const isAdminEmail = fUser.email?.toLowerCase() === 'pwhite.xm@gmail.com';
+        let resolvedUser: User = {
+          uid: fUser.uid,
+          email: fUser.email || '',
+          displayName: fUser.displayName || 'Anonymous',
+          photoURL: fUser.photoURL || undefined,
+          role: isAdminEmail ? 'ADMIN' : 'REPORTER',
+          createdAt: null as any,
+        };
+
+        try {
+          const userDoc = await getDoc(doc(db, 'users', fUser.uid));
+          if (userDoc.exists()) {
+            const userData = userDoc.data() as User;
+            if (isAdminEmail && userData.role !== 'ADMIN') {
+              setDoc(doc(db, 'users', fUser.uid), { role: 'ADMIN' }, { merge: true }).catch(console.error);
+              resolvedUser = { ...userData, role: 'ADMIN' };
+            } else {
+              resolvedUser = userData;
+            }
           } else {
-            setUser(userData);
+            // Create user document if it does not exist yet
+            setDoc(doc(db, 'users', fUser.uid), {
+              ...resolvedUser,
+              createdAt: serverTimestamp(),
+            }).catch(console.error);
           }
-        } else {
-          // Create new user profile
-          const isAdminEmail = fUser.email?.toLowerCase() === 'pwhite.xm@gmail.com';
-          const newUser: User = {
-            uid: fUser.uid,
-            email: fUser.email || '',
-            displayName: fUser.displayName || 'Anonymous',
-            photoURL: fUser.photoURL || undefined,
-            role: isAdminEmail ? 'ADMIN' : 'REPORTER',
-            createdAt: serverTimestamp(),
-          };
-          await setDoc(doc(db, 'users', fUser.uid), newUser);
-          setUser(newUser);
+        } catch (err) {
+          console.warn('Could not read user profile from Firestore (using session profile):', err);
         }
+
+        setUser(resolvedUser);
       } else {
         setUser(null);
       }
