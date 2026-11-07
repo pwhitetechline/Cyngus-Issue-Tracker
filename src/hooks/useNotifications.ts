@@ -10,7 +10,7 @@ import {
   addDoc,
   serverTimestamp 
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 import { Notification } from '../types';
 import { handleFirestoreError, OperationType } from '../lib/error-handler';
 import { useAuth } from '../hooks/useAuth';
@@ -74,9 +74,15 @@ export function useNotifications() {
       // If an email is provided, send the email via our API
       if (recipientEmail && recipientEmail.includes('@')) {
         try {
+          const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+          if (auth.currentUser) {
+            const token = await auth.currentUser.getIdToken();
+            headers['Authorization'] = `Bearer ${token}`;
+          }
+
           const response = await fetch('/api/send-email', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers,
             body: JSON.stringify({
               to: recipientEmail.trim().toLowerCase(),
               subject: notification.title,

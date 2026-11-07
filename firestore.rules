@@ -28,11 +28,19 @@ service cloud.firestore {
     }
     
     function hasRole(roles) {
-      return isAuthenticated();
+      return isAuthenticated() && (
+        isBootstrapAdmin() || 
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && getUserData().role in roles)
+      );
     }
 
     function isValidIssue(data) {
-      return true;
+      return data.keys().hasAll(['title', 'description', 'type', 'status', 'priority', 'reporterId']) &&
+             data.title is string && data.title.size() >= 3 && data.title.size() <= 150 &&
+             data.description is string && data.description.size() >= 5 &&
+             data.type in ['BUG', 'FEATURE', 'SUGGESTION'] &&
+             data.status in ['OPEN', 'IN_PROGRESS', 'IN_REVIEW', 'RESOLVED', 'CLOSED'] &&
+             data.priority in ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
     }
 
     function isValidComment(data) {
@@ -52,16 +60,20 @@ service cloud.firestore {
         request.resource.data.role == 'REPORTER' || 
         (isBootstrapAdmin() && request.resource.data.role == 'ADMIN')
       );
+      // Disallow non-admins from escalating their own role
       allow update: if isAuthenticated() && (
-        isOwner(userId) || 
-        isAdmin()
+        isAdmin() || 
+        (isOwner(userId) && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']))
       );
       allow delete: if isAdmin();
     }
 
     match /issues/{issueId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && hasRole(['ADMIN', 'REPORTER', 'ASSIGNEE']) && isValidIssue(request.resource.data);
+      allow create: if isAuthenticated() && 
+                       hasRole(['ADMIN', 'REPORTER', 'ASSIGNEE']) && 
+                       (request.resource.data.reporterId == request.auth.uid || isAdmin()) &&
+                       isValidIssue(request.resource.data);
       allow update: if isAuthenticated() && (
         isAdmin() || 
         resource.data.reporterId == request.auth.uid || 
@@ -78,7 +90,10 @@ service cloud.firestore {
 
     match /auditLogs/{logId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated(); // Usually created via backend or client-side logic
+      // Ensure users cannot forge audit logs under someone else's identity
+      allow create: if isAuthenticated() && 
+                       request.resource.data.userId == request.auth.uid &&
+                       request.resource.data.keys().hasAll(['issueId', 'userId', 'action', 'timestamp']);
       allow update, delete: if false;
     }
 

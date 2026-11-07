@@ -97,10 +97,71 @@ async function startServer() {
     });
   });
 
-  app.post("/api/send-email", async (req, res) => {
-    const { to, subject, html } = req.body;
-    const resendClient = getResend();
+  // Authentication middleware for protected endpoints
+  async function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ error: "Unauthorized: Missing authentication credentials" });
+    }
 
+    const idToken = authHeader.split("Bearer ")[1]?.trim();
+    if (!idToken) {
+      return res.status(401).json({ error: "Unauthorized: Malformed token" });
+    }
+
+    const authInstance = getAdminAuthInstance();
+    if (!authInstance) {
+      console.warn("[Auth Middleware] Admin auth not available, rejecting unverified request");
+      return res.status(500).json({ error: "Authentication service unavailable" });
+    }
+
+    try {
+      const decodedToken = await authInstance.verifyIdToken(idToken);
+      (req as any).user = decodedToken;
+      next();
+    } catch (err: any) {
+      console.error("[Auth Middleware] Token verification failed:", err?.message || err);
+      return res.status(401).json({ error: "Unauthorized: Invalid or expired authentication token" });
+    }
+  }
+
+  // Rate limiter map generator
+  function createRateLimiter(maxPerMinute: number) {
+    const limits = new Map<string, { count: number; resetTime: number }>();
+    return function check(ip: string): boolean {
+      const now = Date.now();
+      const record = limits.get(ip);
+      if (!record || now > record.resetTime) {
+        limits.set(ip, { count: 1, resetTime: now + 60000 });
+        return true;
+      }
+      if (record.count >= maxPerMinute) {
+        return false;
+      }
+      record.count += 1;
+      return true;
+    };
+  }
+
+  const checkEmailRateLimit = createRateLimiter(20);
+  const checkUploadRateLimit = createRateLimiter(30);
+
+  // Protected email dispatch endpoint
+  app.post("/api/send-email", requireAuth, async (req, res) => {
+    const user = (req as any).user;
+    const clientIp = req.ip || req.socket.remoteAddress || "unknown";
+
+    if (!checkEmailRateLimit(clientIp)) {
+      console.warn(`[Email API] Rate limit exceeded for IP: ${clientIp}`);
+      return res.status(429).json({ error: "Email rate limit exceeded. Please wait a minute before sending more emails." });
+    }
+
+    const { to, subject, html } = req.body;
+    if (!to || !subject || !html) {
+      return res.status(400).json({ error: "Missing required fields: to, subject, and html are required." });
+    }
+
+    const resendClient = getResend();
     if (!resendClient) {
       console.warn("[Email API] Resend client not initialized (missing API key)");
       return res.status(500).json({ error: "Email service not configured" });
@@ -112,6 +173,8 @@ async function startServer() {
         : Array.isArray(to) 
           ? to.map((e: any) => String(e).trim().toLowerCase()) 
           : to;
+
+      console.log(`[Email API] Authenticated request from ${user?.email || user?.uid} to send email to ${normalizedTo}`);
 
       const data = await resendClient.emails.send({
         from: "Web Direct Brands <notifications@resend.dev>",
@@ -165,57 +228,13 @@ async function startServer() {
     ".py", ".rb", ".html", ".htm", ".xhtml", ".jsp", ".asp", ".aspx", ".jar", ".scr", ".dll"
   ]);
 
-  // Rate limiter: maximum 30 upload requests per 60-second window per IP
-  const uploadRateLimits = new Map<string, { count: number; resetTime: number }>();
-  function checkRateLimit(ip: string): boolean {
-    const now = Date.now();
-    const record = uploadRateLimits.get(ip);
-    if (!record || now > record.resetTime) {
-      uploadRateLimits.set(ip, { count: 1, resetTime: now + 60000 });
-      return true;
-    }
-    if (record.count >= 30) {
-      return false;
-    }
-    record.count += 1;
-    return true;
-  }
-
-  // Authentication middleware for upload endpoint
-  async function requireAuth(req: express.Request, res: express.Response, next: express.NextFunction) {
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return res.status(401).json({ error: "Unauthorized: Missing authentication credentials" });
-    }
-
-    const idToken = authHeader.split("Bearer ")[1]?.trim();
-    if (!idToken) {
-      return res.status(401).json({ error: "Unauthorized: Malformed token" });
-    }
-
-    const authInstance = getAdminAuthInstance();
-    if (!authInstance) {
-      console.warn("[Upload Auth] Admin auth not available, rejecting unverified upload");
-      return res.status(500).json({ error: "Authentication service unavailable" });
-    }
-
-    try {
-      const decodedToken = await authInstance.verifyIdToken(idToken);
-      (req as any).user = decodedToken;
-      next();
-    } catch (err: any) {
-      console.error("[Upload Auth] Token verification failed:", err?.message || err);
-      return res.status(401).json({ error: "Unauthorized: Invalid or expired authentication token" });
-    }
-  }
-
   app.post("/api/upload", requireAuth, upload.single("file"), async (req, res) => {
     const user = (req as any).user;
     console.log(`[Upload API] Authenticated request from user: ${user?.uid || "unknown"}`);
     
     try {
       const clientIp = req.ip || req.socket.remoteAddress || "unknown";
-      if (!checkRateLimit(clientIp)) {
+      if (!checkUploadRateLimit(clientIp)) {
         console.warn(`[Upload API] Rate limit exceeded for IP: ${clientIp}`);
         return res.status(429).json({ error: "Upload rate limit exceeded. Please wait a minute before uploading more files." });
       }
