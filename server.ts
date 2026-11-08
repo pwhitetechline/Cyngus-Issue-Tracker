@@ -83,7 +83,15 @@ async function startServer() {
   app.use(cors());
   app.use(bodyParser.json());
 
-// API routes
+  // Prevent browser caching of SPA HTML shells
+  app.use((req, res, next) => {
+    if (req.path === '/' || req.path.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
+    }
+    next();
+  });
   app.use("/api", (req, res, next) => {
     console.log(`[API Request] ${req.method} ${req.url}`);
     next();
