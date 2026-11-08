@@ -56,7 +56,7 @@ function AppContent() {
       case 'dashboard':
         return <Dashboard onIssueClick={handleIssueClick} />;
       case 'issues':
-        return <IssueList onIssueClick={handleIssueClick} />;
+        return <IssueList onIssueClick={handleIssueClick} onNavigateToCreate={() => setActiveTab('create')} />;
       case 'create':
         return <IssueForm onSuccess={() => setActiveTab('issues')} />;
       case 'users':

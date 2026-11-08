@@ -113,13 +113,15 @@ export function IssueCard({ issue, users = [], onClick }: IssueCardProps) {
           {issue.description}
         </p>
         
-        <div className="flex flex-wrap gap-2 mb-4">
-          {issue.labels.map(label => (
-            <Badge key={label} variant="secondary" className="text-[10px] bg-muted text-muted-foreground hover:bg-accent">
-              {label}
-            </Badge>
-          ))}
-        </div>
+        {Array.isArray(issue.labels) && issue.labels.length > 0 && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {issue.labels.map(label => (
+              <Badge key={label} variant="secondary" className="text-[10px] bg-muted text-muted-foreground hover:bg-accent">
+                {label}
+              </Badge>
+            ))}
+          </div>
+        )}
 
         <div className="flex items-center justify-between pt-4 border-t border-border/50">
           <div className="flex items-center gap-3">
@@ -127,7 +129,7 @@ export function IssueCard({ issue, users = [], onClick }: IssueCardProps) {
               <Clock className="w-3 h-3" />
               <span>{formatDistanceToNow(createdAt)} ago</span>
             </div>
-            {issue.attachments.length > 0 && (
+            {Array.isArray(issue.attachments) && issue.attachments.length > 0 && (
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
                 <Paperclip className="w-3 h-3" />
                 <span>{issue.attachments.length}</span>

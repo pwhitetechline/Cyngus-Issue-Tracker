@@ -1,7 +1,8 @@
-import { useIssues } from '../hooks/useIssues';
+import { useIssues, useIssueActions } from '../hooks/useIssues';
 import { useUsers } from '../hooks/useUsers';
 import { useAuth } from '../hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Button } from './ui/button';
 import { 
   Bug, 
   CheckCircle2, 
@@ -9,8 +10,10 @@ import {
   AlertCircle, 
   TrendingUp, 
   Users,
-  BarChart3
+  BarChart3,
+  Sparkles
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { IssueCard } from './IssueCard';
 import { Issue } from '../types';
 import { Skeleton } from './ui/skeleton';
@@ -22,6 +25,7 @@ interface DashboardProps {
 
 export function Dashboard({ onIssueClick }: DashboardProps) {
   const { issues, loading: issuesLoading } = useIssues();
+  const { seedSampleIssues } = useIssueActions();
   const { users, loading: usersLoading } = useUsers();
   const { user } = useAuth();
 
@@ -120,8 +124,23 @@ export function Dashboard({ onIssueClick }: DashboardProps) {
                 <IssueCard key={issue.id} issue={issue} users={users} onClick={onIssueClick} />
               ))}
               {recentIssues.length === 0 && (
-                <div className="col-span-2 py-12 text-center text-muted-foreground">
-                  <p>No recent activity found.</p>
+                <div className="col-span-2 py-12 flex flex-col items-center justify-center text-center gap-3">
+                  <p className="text-muted-foreground text-sm">No issues found in database.</p>
+                  <Button 
+                    onClick={async () => {
+                      try {
+                        await seedSampleIssues();
+                        toast.success('Starter issues restored successfully!');
+                      } catch (e: any) {
+                        toast.error(`Could not restore issues: ${e.message || 'Unknown error'}`);
+                      }
+                    }}
+                    size="sm"
+                    className="gap-2 font-medium"
+                  >
+                    <Sparkles className="w-4 h-4 text-amber-300" />
+                    Restore Starter Issues
+                  </Button>
                 </div>
               )}
             </div>

@@ -23,6 +23,7 @@ import { determineAutoAssignee, getAutomationSettings } from '../lib/automation'
 export function useIssues(filters?: { status?: IssueStatus; priority?: IssuePriority; type?: IssueType }) {
   const [issues, setIssues] = useState<Issue[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
 
   useEffect(() => {
@@ -49,17 +50,20 @@ export function useIssues(filters?: { status?: IssueStatus; priority?: IssuePrio
       });
 
       setIssues(issuesData);
+      setError(null);
       setLoading(false);
-    }, (error) => {
-      console.error('Firestore useIssues error:', error);
-      handleFirestoreError(error, OperationType.LIST, path, false);
+    }, (err) => {
+      console.error('Firestore useIssues error:', err);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      setError(errMsg);
+      handleFirestoreError(err, OperationType.LIST, path, false);
       setLoading(false);
     });
 
     return () => unsubscribe();
   }, [user, filters?.status, filters?.priority, filters?.type]);
 
-  return { issues, loading };
+  return { issues, loading, error };
 }
 
 export function useIssue(id: string) {
@@ -257,5 +261,82 @@ export function useIssueActions() {
     }
   };
 
-  return { createIssue, updateIssue, deleteIssue };
+  const seedSampleIssues = async () => {
+    if (!user) throw new Error('Must be logged in to restore issues');
+
+    const sampleTickets = [
+      {
+        title: 'Checkout Gateway Timeout during peak hours',
+        description: 'Payment requests taking longer than 15s to respond during flash sales, causing dropped conversions and duplicate card authorization attempts.',
+        type: 'BUG' as IssueType,
+        status: 'OPEN' as IssueStatus,
+        priority: 'CRITICAL' as IssuePriority,
+        labels: ['checkout', 'payment', 'backend'],
+        reporterId: user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+      {
+        title: 'Mobile navigation drawer overlapping sticky header',
+        description: 'On iOS Safari viewports under 400px, the category dropdown drawer renders underneath the top navigation banner and blocks touch taps.',
+        type: 'BUG' as IssueType,
+        status: 'IN_PROGRESS' as IssueStatus,
+        priority: 'HIGH' as IssuePriority,
+        labels: ['mobile', 'css', 'ui'],
+        reporterId: user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+      {
+        title: 'Automated order confirmation email delivery delay',
+        description: 'Customer notification receipts taking up to 45 minutes to dispatch after transactional payment capture in the order queue.',
+        type: 'BUG' as IssueType,
+        status: 'IN_REVIEW' as IssueStatus,
+        priority: 'MEDIUM' as IssuePriority,
+        labels: ['email', 'automation', 'notifications'],
+        reporterId: user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+      {
+        title: 'Add multi-currency support to product catalog',
+        description: 'Allow customers in Canada, UK, and EU to view real-time pricing and checkout in localized currencies (CAD, GBP, EUR).',
+        type: 'FEATURE' as IssueType,
+        status: 'OPEN' as IssueStatus,
+        priority: 'HIGH' as IssuePriority,
+        labels: ['billing', 'localization', 'international'],
+        reporterId: user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+      {
+        title: 'Inventory sync lag with third-party logistics API',
+        description: 'Warehouse inventory counts are cached for 6 hours instead of 15 minutes, causing occasional backorders on low-stock SKUs.',
+        type: 'BUG' as IssueType,
+        status: 'IN_PROGRESS' as IssueStatus,
+        priority: 'HIGH' as IssuePriority,
+        labels: ['inventory', 'sync', 'logistics'],
+        reporterId: user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      },
+      {
+        title: 'Optimize product catalog image compression pipeline',
+        description: 'Switch product hero images from PNG/JPEG to WebP/AVIF format with automated responsive srcset scaling for faster page speeds.',
+        type: 'SUGGESTION' as IssueType,
+        status: 'RESOLVED' as IssueStatus,
+        priority: 'LOW' as IssuePriority,
+        labels: ['performance', 'media', 'seo'],
+        reporterId: user.uid,
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+      }
+    ];
+
+    for (const ticket of sampleTickets) {
+      await addDoc(collection(db, 'issues'), ticket);
+    }
+  };
+
+  return { createIssue, updateIssue, deleteIssue, seedSampleIssues };
 }

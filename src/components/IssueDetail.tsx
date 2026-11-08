@@ -645,7 +645,7 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                 </div>
               )}
             </CardContent>
-            {issue.labels.length > 0 && (
+            {Array.isArray(issue.labels) && issue.labels.length > 0 && (
               <CardFooter className="px-8 pb-8 pt-0 flex flex-wrap gap-2">
                 {issue.labels.map(label => (
                   <Badge key={label} variant="secondary" className="bg-muted text-muted-foreground">
