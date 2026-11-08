@@ -224,7 +224,7 @@ export function KanbanBoard({ issues, users, onIssueClick }: KanbanBoardProps) {
                 ) : (
                   colIssues.map((issue) => {
                     const assignee = issue.assigneeId ? userMap.get(issue.assigneeId) : null;
-                    const ticketNum = `#WDB-${issue.id.slice(0, 8).toUpperCase()}`;
+                    const ticketNum = issue.id ? `#WDB-${issue.id.slice(0, 8).toUpperCase()}` : '#WDB-NEW';
                     const currentIndex = STATUS_ORDER.indexOf(issue.status);
                     const prevStatus = currentIndex > 0 ? STATUS_ORDER[currentIndex - 1] : null;
                     const nextStatus = currentIndex < STATUS_ORDER.length - 1 ? STATUS_ORDER[currentIndex + 1] : null;
@@ -313,7 +313,7 @@ export function KanbanBoard({ issues, users, onIssueClick }: KanbanBoardProps) {
                           <Badge variant="outline" className="text-[10px] font-mono uppercase border-border/80 text-muted-foreground">
                             {issue.type}
                           </Badge>
-                          {issue.attachments && issue.attachments.length > 0 && (
+                          {Array.isArray(issue.attachments) && issue.attachments.length > 0 && (
                             <span className="flex items-center gap-0.5 text-[11px] text-muted-foreground ml-auto" title={`${issue.attachments.length} attachments`}>
                               <Paperclip className="w-3 h-3" />
                               {issue.attachments.length}
@@ -327,7 +327,7 @@ export function KanbanBoard({ issues, users, onIssueClick }: KanbanBoardProps) {
                             {assignee?.photoURL ? (
                               <img
                                 src={assignee.photoURL}
-                                alt={assignee.displayName}
+                                alt={assignee.displayName || assignee.email || 'User'}
                                 className="w-5 h-5 rounded-full object-cover shrink-0"
                               />
                             ) : (
@@ -336,7 +336,7 @@ export function KanbanBoard({ issues, users, onIssueClick }: KanbanBoardProps) {
                               </div>
                             )}
                             <span className="text-muted-foreground truncate text-[11px]">
-                              {assignee ? assignee.displayName : 'Unassigned'}
+                              {assignee ? (assignee.displayName || assignee.email || 'Assigned') : 'Unassigned'}
                             </span>
                           </div>
 

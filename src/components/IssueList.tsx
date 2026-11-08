@@ -26,7 +26,8 @@ import {
   PlusCircle,
   RefreshCw,
   AlertTriangle,
-  Sparkles
+  Sparkles,
+  Trash2
 } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import { cn } from '../lib/utils';
@@ -45,18 +46,28 @@ export function IssueList({ onIssueClick, onNavigateToCreate }: IssueListProps) 
 
   const { issues, loading: issuesLoading, error: issuesError } = useIssues(filters);
   const { users, loading: usersLoading } = useUsers();
-  const { seedSampleIssues } = useIssueActions();
+  const { purgeSampleIssues } = useIssueActions();
 
   const loading = issuesLoading || usersLoading;
 
-  const handleSeed = async () => {
+  const sampleTitles = new Set([
+    'Checkout Gateway Timeout during peak hours',
+    'Mobile navigation drawer overlapping sticky header',
+    'Automated order confirmation email delivery delay',
+    'Add multi-currency support to product catalog',
+    'Inventory sync lag with third-party logistics API',
+    'Optimize product catalog image compression pipeline'
+  ]);
+  const hasSampleIssues = issues.some(i => sampleTitles.has(i.title));
+
+  const handlePurge = async () => {
     setIsSeeding(true);
     try {
-      await seedSampleIssues();
-      toast.success('Restored 6 starter issues successfully!');
+      const count = await purgeSampleIssues();
+      toast.success(`Removed ${count} sample issue(s).`);
     } catch (err: any) {
-      console.error('Seed error:', err);
-      toast.error(`Failed to restore issues: ${err.message || 'Unknown error'}`);
+      console.error('Purge error:', err);
+      toast.error(`Failed to remove sample issues: ${err.message || 'Unknown error'}`);
     } finally {
       setIsSeeding(false);
     }
@@ -89,6 +100,20 @@ export function IssueList({ onIssueClick, onNavigateToCreate }: IssueListProps) 
             >
               <PlusCircle className="w-4 h-4" />
               New Issue
+            </Button>
+          )}
+
+          {/* Remove Starter Issues button if detected */}
+          {hasSampleIssues && (
+            <Button 
+              onClick={handlePurge}
+              disabled={isSeeding}
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5 font-medium text-xs border-amber-500/30 text-amber-400 hover:bg-amber-500/10"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              {isSeeding ? "Purging..." : "Remove 6 Starter Issues"}
             </Button>
           )}
 
@@ -236,11 +261,11 @@ export function IssueList({ onIssueClick, onNavigateToCreate }: IssueListProps) 
                 </div>
                 <div className="space-y-1">
                   <h3 className="text-lg font-semibold text-foreground">
-                    {issues.length === 0 ? "No issues in this database yet" : "No matching issues found"}
+                    {issues.length === 0 ? "No issues in database yet" : "No matching issues found"}
                   </h3>
                   <p className="text-sm text-muted-foreground">
                     {issues.length === 0 
-                      ? "Your database is active and connected. You can create a new issue or restore the starter issues with one click."
+                      ? "Get started by creating a new issue for your team."
                       : "Try adjusting your search criteria or resetting the status/priority filters."
                     }
                   </p>
@@ -248,27 +273,15 @@ export function IssueList({ onIssueClick, onNavigateToCreate }: IssueListProps) 
 
                 <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
                   {issues.length === 0 ? (
-                    <>
+                    onNavigateToCreate && (
                       <Button 
-                        onClick={handleSeed} 
-                        disabled={isSeeding}
-                        className="gap-2 font-medium"
+                        onClick={onNavigateToCreate}
+                        className="gap-1.5 font-medium"
                       >
-                        <Sparkles className="w-4 h-4 text-amber-300" />
-                        {isSeeding ? "Restoring Issues..." : "Restore Starter Issues"}
+                        <PlusCircle className="w-4 h-4" />
+                        Create Issue
                       </Button>
-                      
-                      {onNavigateToCreate && (
-                        <Button 
-                          variant="outline"
-                          onClick={onNavigateToCreate}
-                          className="gap-1.5"
-                        >
-                          <PlusCircle className="w-4 h-4" />
-                          Create Custom Issue
-                        </Button>
-                      )}
-                    </>
+                    )
                   ) : (
                     <Button variant="outline" onClick={() => { setSearch(''); setFilters({}); }}>
                       Clear all filters

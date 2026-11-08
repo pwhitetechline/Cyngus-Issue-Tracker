@@ -25,7 +25,26 @@ interface DashboardProps {
 
 export function Dashboard({ onIssueClick }: DashboardProps) {
   const { issues, loading: issuesLoading } = useIssues();
-  const { seedSampleIssues } = useIssueActions();
+  const { purgeSampleIssues } = useIssueActions();
+  const sampleTitles = new Set([
+    'Checkout Gateway Timeout during peak hours',
+    'Mobile navigation drawer overlapping sticky header',
+    'Automated order confirmation email delivery delay',
+    'Add multi-currency support to product catalog',
+    'Inventory sync lag with third-party logistics API',
+    'Optimize product catalog image compression pipeline'
+  ]);
+  const hasSampleIssues = issues.some(i => sampleTitles.has(i.title));
+
+  const handlePurge = async () => {
+    try {
+      const count = await purgeSampleIssues();
+      toast.success(`Removed ${count} sample issue(s).`);
+    } catch (e: any) {
+      toast.error(`Failed to remove sample issues: ${e.message || 'Unknown error'}`);
+    }
+  };
+
   const { users, loading: usersLoading } = useUsers();
   const { user } = useAuth();
 
@@ -125,25 +144,29 @@ export function Dashboard({ onIssueClick }: DashboardProps) {
               ))}
               {recentIssues.length === 0 && (
                 <div className="col-span-2 py-12 flex flex-col items-center justify-center text-center gap-3">
-                  <p className="text-muted-foreground text-sm">No issues found in database.</p>
-                  <Button 
-                    onClick={async () => {
-                      try {
-                        await seedSampleIssues();
-                        toast.success('Starter issues restored successfully!');
-                      } catch (e: any) {
-                        toast.error(`Could not restore issues: ${e.message || 'Unknown error'}`);
-                      }
-                    }}
-                    size="sm"
-                    className="gap-2 font-medium"
-                  >
-                    <Sparkles className="w-4 h-4 text-amber-300" />
-                    Restore Starter Issues
-                  </Button>
+                  <p className="text-muted-foreground text-sm">No active issues found in database.</p>
                 </div>
               )}
             </div>
+
+            {hasSampleIssues && (
+              <div className="mt-6 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 text-amber-500 flex-shrink-0" />
+                  <p className="text-xs text-amber-200">
+                    Starter template issues are currently in your database. You can clear them anytime.
+                  </p>
+                </div>
+                <Button 
+                  onClick={handlePurge}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs border-amber-500/30 text-amber-300 hover:bg-amber-500/20 font-medium whitespace-nowrap"
+                >
+                  Remove 6 Starter Issues
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -162,8 +185,8 @@ export function Dashboard({ onIssueClick }: DashboardProps) {
                 const colors = ['bg-blue-500', 'bg-amber-500', 'bg-red-500', 'bg-emerald-500', 'bg-purple-500'];
                 return (
                   <WorkloadItem 
-                    key={user.uid} 
-                    name={user.displayName} 
+                    key={user.uid || idx} 
+                    name={user.displayName || user.email || 'Team Member'} 
                     count={activeIssues} 
                     total={Math.max(activeIssues, 10)} 
                     color={colors[idx % colors.length]} 

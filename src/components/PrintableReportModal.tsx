@@ -169,7 +169,7 @@ export function PrintableReportModal({ issues, users, trigger }: PrintableReport
                         </span>
                       </td>
                       <td className="py-2.5 px-2 text-muted-foreground print:text-black">
-                        {assignee ? assignee.displayName : 'Unassigned'}
+                        {assignee ? (assignee.displayName || assignee.email || 'Assigned') : 'Unassigned'}
                       </td>
                       <td className="py-2.5 px-2 text-right text-muted-foreground print:text-black font-mono">
                         {updatedDate}

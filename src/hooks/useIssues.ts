@@ -338,5 +338,28 @@ export function useIssueActions() {
     }
   };
 
-  return { createIssue, updateIssue, deleteIssue, seedSampleIssues };
+  const purgeSampleIssues = async () => {
+    if (!user) throw new Error('Must be logged in to remove sample issues');
+    const { deleteDoc, getDocs } = await import('firebase/firestore');
+    const snap = await getDocs(collection(db, 'issues'));
+    const sampleTitles = new Set([
+      'Checkout Gateway Timeout during peak hours',
+      'Mobile navigation drawer overlapping sticky header',
+      'Automated order confirmation email delivery delay',
+      'Add multi-currency support to product catalog',
+      'Inventory sync lag with third-party logistics API',
+      'Optimize product catalog image compression pipeline'
+    ]);
+    let deletedCount = 0;
+    for (const d of snap.docs) {
+      const data = d.data();
+      if (sampleTitles.has(data.title)) {
+        await deleteDoc(doc(db, 'issues', d.id));
+        deletedCount++;
+      }
+    }
+    return deletedCount;
+  };
+
+  return { createIssue, updateIssue, deleteIssue, seedSampleIssues, purgeSampleIssues };
 }

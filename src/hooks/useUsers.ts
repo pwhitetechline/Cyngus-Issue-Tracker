@@ -10,12 +10,29 @@ export function useUsers() {
 
   useEffect(() => {
     const path = 'users';
-    const q = query(collection(db, path), orderBy('displayName', 'asc'));
+    // Query without orderBy so Firestore does not filter out documents missing the displayName field
+    const q = query(collection(db, path));
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setUsers(snapshot.docs.map(doc => ({ ...doc.data() } as User)));
+      const list = snapshot.docs.map(doc => {
+        const data = doc.data();
+        const email = data.email || '';
+        const fallbackName = email ? email.split('@')[0] : 'Team Member';
+        return {
+          uid: doc.id,
+          ...data,
+          displayName: data.displayName || fallbackName,
+          email: email,
+          role: data.role || 'REPORTER',
+        } as User;
+      });
+
+      // Sort client-side safely
+      list.sort((a, b) => (a.displayName || '').localeCompare(b.displayName || ''));
+      setUsers(list);
       setLoading(false);
     }, (error) => {
+      console.error('Firestore useUsers error:', error);
       handleFirestoreError(error, OperationType.LIST, path, false);
       setLoading(false);
     });

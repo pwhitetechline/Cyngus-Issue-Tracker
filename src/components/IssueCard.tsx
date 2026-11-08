@@ -138,22 +138,22 @@ export function IssueCard({ issue, users = [], onClick }: IssueCardProps) {
           </div>
           
           <div className="flex -space-x-2">
-            <div className="w-6 h-6 rounded-full border-2 border-background flex items-center justify-center overflow-hidden bg-muted" title={`Reporter: ${reporter?.displayName || issue.reporterId}`}>
+            <div className="w-6 h-6 rounded-full border-2 border-background flex items-center justify-center overflow-hidden bg-muted" title={`Reporter: ${reporter?.displayName || reporter?.email || issue.reporterId}`}>
               {reporter ? (
                 <Avatar className="w-full h-full">
                   <AvatarImage src={reporter.photoURL} />
-                  <AvatarFallback className="text-[8px]">{reporter.displayName.charAt(0)}</AvatarFallback>
+                  <AvatarFallback className="text-[8px]">{(reporter.displayName || reporter.email || 'U').charAt(0).toUpperCase()}</AvatarFallback>
                 </Avatar>
               ) : (
                 <User className="w-3 h-3 text-muted-foreground" />
               )}
             </div>
             {issue.assigneeId && (
-              <div className="w-6 h-6 rounded-full border-2 border-background flex items-center justify-center overflow-hidden bg-primary/10" title={`Assignee: ${assignee?.displayName || issue.assigneeId}`}>
+              <div className="w-6 h-6 rounded-full border-2 border-background flex items-center justify-center overflow-hidden bg-primary/10" title={`Assignee: ${assignee?.displayName || assignee?.email || issue.assigneeId}`}>
                 {assignee ? (
                   <Avatar className="w-full h-full">
                     <AvatarImage src={assignee.photoURL} />
-                    <AvatarFallback className="text-[8px]">{assignee.displayName.charAt(0)}</AvatarFallback>
+                    <AvatarFallback className="text-[8px]">{(assignee.displayName || assignee.email || 'U').charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
                 ) : (
                   <User className="w-3 h-3 text-primary" />

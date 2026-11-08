@@ -37,7 +37,22 @@ export function UserManagement() {
 
   useEffect(() => {
     const unsubscribe = onSnapshot(collection(db, 'users'), (snapshot) => {
-      setUsers(snapshot.docs.map(doc => ({ ...doc.data() } as User)));
+      const list = snapshot.docs.map(doc => {
+        const data = doc.data();
+        const email = data.email || '';
+        const fallbackName = email ? email.split('@')[0] : 'Team Member';
+        return {
+          uid: doc.id,
+          ...data,
+          displayName: data.displayName || fallbackName,
+          email: email,
+          role: data.role || 'REPORTER',
+        } as User;
+      });
+      setUsers(list);
+      setLoading(false);
+    }, (err) => {
+      console.error('UserManagement fetch error:', err);
       setLoading(false);
     });
     return () => unsubscribe();
@@ -109,11 +124,11 @@ export function UserManagement() {
                     <div className="flex items-center gap-3">
                       <Avatar className="w-10 h-10 border border-border">
                         <AvatarImage src={user.photoURL} />
-                        <AvatarFallback>{user.displayName.charAt(0)}</AvatarFallback>
+                        <AvatarFallback>{(user.displayName || user.email || 'U').charAt(0).toUpperCase()}</AvatarFallback>
                       </Avatar>
                       <div className="flex flex-col">
-                        <span className="font-bold text-foreground">{user.displayName}</span>
-                        <span className="text-xs text-muted-foreground font-mono">{user.uid.slice(0, 8)}</span>
+                        <span className="font-bold text-foreground">{user.displayName || user.email || 'Team Member'}</span>
+                        <span className="text-xs text-muted-foreground font-mono">{(user.uid || '').slice(0, 8)}</span>
                       </div>
                     </div>
                   </TableCell>

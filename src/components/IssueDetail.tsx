@@ -542,9 +542,9 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                 <div className="flex items-center gap-2">
                   <Avatar className="w-6 h-6 border border-border">
                     <AvatarImage src={reporter?.photoURL} />
-                    <AvatarFallback>{(reporter?.displayName || issue.reporterId).charAt(0)}</AvatarFallback>
+                    <AvatarFallback>{(reporter?.displayName || reporter?.email || issue.reporterId || 'U').charAt(0).toUpperCase()}</AvatarFallback>
                   </Avatar>
-                  <span className="text-sm text-muted-foreground">Reporter: {reporter?.displayName || `User ${issue.reporterId.slice(0, 6)}`}</span>
+                  <span className="text-sm text-muted-foreground">Reporter: {reporter?.displayName || reporter?.email || (issue.reporterId ? `User ${issue.reporterId.slice(0, 6)}` : 'Team Member')}</span>
                 </div>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Clock className="w-4 h-4" />
@@ -797,7 +797,7 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                     {assignee ? (
                       <Avatar className="w-full h-full">
                         <AvatarImage src={assignee.photoURL} />
-                        <AvatarFallback>{assignee.displayName.charAt(0)}</AvatarFallback>
+                        <AvatarFallback>{(assignee.displayName || assignee.email || 'U').charAt(0).toUpperCase()}</AvatarFallback>
                       </Avatar>
                     ) : (
                       <User className="w-4 h-4 text-muted-foreground" />
@@ -805,7 +805,7 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                   </div>
                   <div className="flex flex-col">
                     <span className={`text-sm ${assignee ? 'text-foreground font-medium' : 'text-muted-foreground italic'}`}>
-                      {assignee ? assignee.displayName : 'Unassigned'}
+                      {assignee ? (assignee.displayName || assignee.email || 'Assigned User') : 'Unassigned'}
                     </span>
                     {assignee && <span className="text-[10px] text-muted-foreground font-mono">{assignee.role}</span>}
                   </div>
@@ -824,10 +824,10 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                           <div className="flex items-center gap-2">
                             <Avatar className="w-5 h-5 border border-border">
                               <AvatarImage src={u.photoURL} />
-                              <AvatarFallback>{u.displayName.charAt(0)}</AvatarFallback>
+                              <AvatarFallback>{(u.displayName || u.email || 'U').charAt(0).toUpperCase()}</AvatarFallback>
                             </Avatar>
                             <div className="flex flex-col">
-                              <span className="text-sm">{u.displayName}</span>
+                              <span className="text-sm">{u.displayName || u.email || 'Team Member'}</span>
                               <span className="text-[10px] text-muted-foreground">{u.role}</span>
                             </div>
                           </div>

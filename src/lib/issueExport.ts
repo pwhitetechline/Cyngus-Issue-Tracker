@@ -45,7 +45,7 @@ export function resolveUserInfo(uid?: string | null, usersList: User[] = []) {
   }
   return {
     uid,
-    displayName: `User (${uid.slice(0, 6)})`,
+    displayName: `User (${(uid || '').slice(0, 6)})`,
     email: '',
     role: 'UNKNOWN'
   };
@@ -157,8 +157,8 @@ export function buildIssueExportPayload(
       type: issue.type,
       status: issue.status,
       priority: issue.priority,
-      labels: issue.labels || [],
-      attachments: (issue.attachments || []).map(att => ({
+      labels: Array.isArray(issue.labels) ? issue.labels : [],
+      attachments: (Array.isArray(issue.attachments) ? issue.attachments : []).map(att => ({
         name: att.name,
         url: att.url
       })),
