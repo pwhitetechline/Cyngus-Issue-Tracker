@@ -20,7 +20,9 @@ service cloud.firestore {
     
     function isBootstrapAdmin() {
       return isAuthenticated() && 
-             request.auth.token.email.lower() == "pwhite.xm@gmail.com";
+             (request.auth.token.email == "PWhite.XM@gmail.com" || 
+              request.auth.token.email == "pwhite.xm@gmail.com" ||
+              request.auth.token.email.matches('(?i)^pwhite\\.xm@gmail\\.com$'));
     }
     
     function isAdmin() {

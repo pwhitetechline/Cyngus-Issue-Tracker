@@ -2,20 +2,26 @@ import { useState, useEffect, createContext, useContext } from 'react';
 import { 
   onAuthStateChanged, 
   signInWithPopup, 
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider, 
   signOut, 
   User as FirebaseUser 
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
-import { User, UserRole } from '../types';
+import { User } from '../types';
 import { toast } from 'sonner';
 
 interface AuthContextType {
   user: User | null;
   firebaseUser: FirebaseUser | null;
   loading: boolean;
+  isSigningIn: boolean;
+  authError: string | null;
   signIn: () => Promise<void>;
+  signInRedirect: () => Promise<void>;
+  clearAuthError: () => void;
   logout: () => Promise<void>;
   isAdmin: boolean;
 }
@@ -26,8 +32,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Check if returning from a redirect sign-in
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          toast.success(`Signed in as ${result.user.email}`);
+        }
+      })
+      .catch((error: any) => {
+        console.error('Redirect sign-in error:', error);
+        let msg = error.message || 'Redirect sign-in failed';
+        if (error.code === 'auth/unauthorized-domain') {
+          msg = `Domain not authorized. Please add "${window.location.hostname}" to Firebase Console > Authentication > Settings > Authorized domains.`;
+        }
+        setAuthError(msg);
+      });
+
     const unsubscribe = onAuthStateChanged(auth, async (fUser) => {
       setFirebaseUser(fUser);
       
@@ -64,6 +88,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         setUser(resolvedUser);
+        setAuthError(null);
       } else {
         setUser(null);
       }
@@ -74,23 +99,49 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async () => {
+    setIsSigningIn(true);
+    setAuthError(null);
     const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+
     try {
       await signInWithPopup(auth, provider);
     } catch (error: any) {
-      console.error('Sign in error:', error);
-      // Check for unauthorized domain error
+      console.error('Sign in popup error:', error);
+      let msg = error.message || 'Sign in failed';
       if (error.code === 'auth/unauthorized-domain') {
-        toast.error('Domain not authorized', {
-          description: `Please add "${window.location.hostname}" to your Firebase Console > Authentication > Settings > Authorized domains.`,
-          duration: 10000,
-        });
-      } else {
-        toast.error('Sign in failed', {
-          description: error.message || 'Please check your console for details.',
-        });
+        msg = `Domain "${window.location.hostname}" is not authorized. Please add it to your Firebase Console > Authentication > Settings > Authorized domains.`;
+      } else if (error.code === 'auth/popup-blocked') {
+        msg = 'Sign-in pop-up was blocked by your browser. Please allow pop-ups for this site or open the app in a new browser tab.';
+      } else if (error.code === 'auth/popup-closed-by-user') {
+        msg = 'The sign-in pop-up was closed before completion. If the popup closed automatically, your browser may be blocking iframe pop-ups—try clicking "Open in Full Tab".';
       }
+      setAuthError(msg);
+      toast.error('Sign In Issue', {
+        description: msg,
+        duration: 9000,
+      });
+    } finally {
+      setIsSigningIn(false);
     }
+  };
+
+  const signInRedirect = async () => {
+    setIsSigningIn(true);
+    setAuthError(null);
+    const provider = new GoogleAuthProvider();
+    provider.setCustomParameters({ prompt: 'select_account' });
+    try {
+      await signInWithRedirect(auth, provider);
+    } catch (error: any) {
+      console.error('Sign in redirect error:', error);
+      setAuthError(error.message || 'Redirect sign-in failed');
+      setIsSigningIn(false);
+    }
+  };
+
+  const clearAuthError = () => {
+    setAuthError(null);
   };
 
   const logout = async () => {
@@ -100,7 +151,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const isAdmin = user?.role === 'ADMIN' || firebaseUser?.email?.toLowerCase() === 'pwhite.xm@gmail.com';
 
   return (
-    <AuthContext.Provider value={{ user, firebaseUser, loading, signIn, logout, isAdmin }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      firebaseUser, 
+      loading, 
+      isSigningIn, 
+      authError, 
+      signIn, 
+      signInRedirect, 
+      clearAuthError, 
+      logout, 
+      isAdmin 
+    }}>
       {children}
     </AuthContext.Provider>
   );

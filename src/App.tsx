@@ -29,8 +29,8 @@ export default function App() {
           <AuthProvider>
             <AuthGuard>
               <AppContent />
-              <Toaster position="top-right" />
             </AuthGuard>
+            <Toaster position="top-right" />
           </AuthProvider>
         </QueryClientProvider>
       </ThemeProvider>
