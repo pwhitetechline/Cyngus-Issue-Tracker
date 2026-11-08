@@ -27,11 +27,13 @@ import {
   RefreshCw,
   AlertTriangle,
   Sparkles,
-  Trash2
+  Trash2,
+  FileJson
 } from 'lucide-react';
 import { Skeleton } from './ui/skeleton';
 import { cn } from '../lib/utils';
 import { toast } from 'sonner';
+import { JsonImportModal } from './JsonImportModal';
 
 interface IssueListProps {
   onIssueClick: (issue: Issue) => void;
@@ -43,6 +45,7 @@ export function IssueList({ onIssueClick, onNavigateToCreate }: IssueListProps) 
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'kanban'>('grid');
   const [isSeeding, setIsSeeding] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const { issues, loading: issuesLoading, error: issuesError } = useIssues(filters);
   const { users, loading: usersLoading } = useUsers();
@@ -128,6 +131,17 @@ export function IssueList({ onIssueClick, onNavigateToCreate }: IssueListProps) 
           >
             <Download className="w-4 h-4 text-primary" />
             Export CSV
+          </Button>
+
+          {/* Import JSON Button */}
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setIsImportModalOpen(true)}
+            className="h-9 gap-1.5 border-border"
+          >
+            <FileJson className="w-4 h-4 text-primary" />
+            Import JSON
           </Button>
 
           {/* View Mode Switcher */}
@@ -273,15 +287,26 @@ export function IssueList({ onIssueClick, onNavigateToCreate }: IssueListProps) 
 
                 <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
                   {issues.length === 0 ? (
-                    onNavigateToCreate && (
+                    <>
+                      {onNavigateToCreate && (
+                        <Button 
+                          onClick={onNavigateToCreate}
+                          className="gap-1.5 font-medium"
+                        >
+                          <PlusCircle className="w-4 h-4" />
+                          Create Issue
+                        </Button>
+                      )}
+
                       <Button 
-                        onClick={onNavigateToCreate}
+                        variant="outline"
+                        onClick={() => setIsImportModalOpen(true)}
                         className="gap-1.5 font-medium"
                       >
-                        <PlusCircle className="w-4 h-4" />
-                        Create Issue
+                        <FileJson className="w-4 h-4 text-primary" />
+                        Import JSON
                       </Button>
-                    )
+                    </>
                   ) : (
                     <Button variant="outline" onClick={() => { setSearch(''); setFilters({}); }}>
                       Clear all filters
@@ -293,6 +318,13 @@ export function IssueList({ onIssueClick, onNavigateToCreate }: IssueListProps) 
           )}
         </>
       )}
+
+      {/* JSON Import Modal */}
+      <JsonImportModal 
+        isOpen={isImportModalOpen} 
+        onClose={() => setIsImportModalOpen(false)} 
+        users={users} 
+      />
     </div>
   );
 }

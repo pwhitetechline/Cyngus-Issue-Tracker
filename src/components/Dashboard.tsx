@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useIssues, useIssueActions } from '../hooks/useIssues';
 import { useUsers } from '../hooks/useUsers';
 import { useAuth } from '../hooks/useAuth';
@@ -11,13 +12,15 @@ import {
   TrendingUp, 
   Users,
   BarChart3,
-  Sparkles
+  Sparkles,
+  FileJson
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { IssueCard } from './IssueCard';
 import { Issue } from '../types';
 import { Skeleton } from './ui/skeleton';
 import { cn } from '../lib/utils';
+import { JsonImportModal } from './JsonImportModal';
 
 interface DashboardProps {
   onIssueClick: (issue: Issue) => void;
@@ -44,6 +47,8 @@ export function Dashboard({ onIssueClick }: DashboardProps) {
       toast.error(`Failed to remove sample issues: ${e.message || 'Unknown error'}`);
     }
   };
+
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const { users, loading: usersLoading } = useUsers();
   const { user } = useAuth();
@@ -90,9 +95,21 @@ export function Dashboard({ onIssueClick }: DashboardProps) {
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
-      <div className="flex flex-col gap-2">
-        <h1 className="text-3xl font-bold text-foreground tracking-tight">Team Overview</h1>
-        <p className="text-muted-foreground">Real-time metrics and workload distribution for Web Direct Brands.</p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <h1 className="text-3xl font-bold text-foreground tracking-tight">Team Overview</h1>
+          <p className="text-muted-foreground">Real-time metrics and workload distribution for Web Direct Brands.</p>
+        </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setIsImportModalOpen(true)}
+          className="h-9 gap-1.5 self-start sm:self-auto border-border"
+        >
+          <FileJson className="w-4 h-4 text-primary" />
+          Import Issues (JSON)
+        </Button>
       </div>
 
       {/* Stats Grid */}
@@ -145,6 +162,15 @@ export function Dashboard({ onIssueClick }: DashboardProps) {
               {recentIssues.length === 0 && (
                 <div className="col-span-2 py-12 flex flex-col items-center justify-center text-center gap-3">
                   <p className="text-muted-foreground text-sm">No active issues found in database.</p>
+                  <Button 
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setIsImportModalOpen(true)}
+                    className="gap-1.5 font-medium text-xs border-border"
+                  >
+                    <FileJson className="w-3.5 h-3.5 text-primary" />
+                    Import Issues from JSON
+                  </Button>
                 </div>
               )}
             </div>
@@ -213,6 +239,13 @@ export function Dashboard({ onIssueClick }: DashboardProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* JSON Import Modal */}
+      <JsonImportModal 
+        isOpen={isImportModalOpen} 
+        onClose={() => setIsImportModalOpen(false)} 
+        users={users} 
+      />
     </div>
   );
 }
