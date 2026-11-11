@@ -358,6 +358,11 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
     const files = e.target.files;
     if (!files || files.length === 0 || !issue) return;
 
+    if (!auth.currentUser) {
+      toast.error('You must be signed in to upload attachments');
+      return;
+    }
+
     const fileList = Array.from(files);
     console.log(`[Upload] Starting for ${fileList.length} files`);
     
@@ -378,11 +383,10 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
         formData.append('file', file);
         formData.append('issueId', issueId);
 
-        const headers: Record<string, string> = {};
-        if (auth.currentUser) {
-          const idToken = await auth.currentUser.getIdToken();
-          headers['Authorization'] = `Bearer ${idToken}`;
-        }
+        const idToken = await auth.currentUser.getIdToken();
+        const headers: Record<string, string> = {
+          'Authorization': `Bearer ${idToken}`
+        };
 
         try {
           const response = await fetch('/api/upload', {
@@ -392,8 +396,8 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
           });
 
           if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.details || errorData.error || 'Upload failed');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || errorData.details || `Upload failed (Status ${response.status})`);
           }
 
           const result = await response.json();
@@ -401,7 +405,6 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
           newAttachments.push({ name: result.name, url: result.url });
         } catch (err: any) {
           console.error(`[Upload] Error uploading ${file.name}:`, err);
-          toast.error(`Failed to upload ${file.name}: ${err.message}`, { id: uploadToastId });
           throw err;
         }
       }
@@ -410,9 +413,9 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
       toast.message('Finalizing issue update...', { id: uploadToastId });
       await updateIssue(issueId, { attachments: newAttachments });
       toast.success('Files uploaded successfully', { id: uploadToastId });
-    } catch (error) {
+    } catch (error: any) {
       console.error('[Upload] Detailed failure:', error);
-      toast.error(error instanceof Error ? `Upload failed: ${error.message}` : 'Failed to upload files', { id: uploadToastId });
+      toast.error(error?.message || 'Failed to upload files', { id: uploadToastId });
     } finally {
       console.log('[Upload] Process complete');
       setUploading(false);
@@ -566,6 +569,14 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                     <div 
                       className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer bg-muted/50 group"
                       onClick={() => document.getElementById('edit-file-upload')?.click()}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                          const syntheticEvent = { target: { files: e.dataTransfer.files } } as any;
+                          handleFileUpload(syntheticEvent);
+                        }
+                      }}
                     >
                       <input 
                         id="edit-file-upload"
@@ -573,15 +584,16 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                         multiple 
                         className="hidden" 
                         onChange={handleFileUpload}
-                        accept="image/*,.pdf,.doc,.docx"
+                        accept=".txt,.log,.text,.csv,.tsv,.json,.md,.pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp,.svg,text/*,image/*"
                       />
                       <div className="flex flex-col items-center gap-2">
                         <div className="p-2 bg-card rounded-full shadow-sm group-hover:scale-110 transition-transform">
                           {uploading ? <Loader2 className="w-5 h-5 animate-spin text-primary" /> : <ImageIcon className="w-5 h-5 text-muted-foreground group-hover:text-primary" />}
                         </div>
                         <p className="text-sm font-medium text-muted-foreground">
-                          {uploading ? 'Uploading...' : 'Click to add more screenshots or documents'}
+                          {uploading ? 'Uploading...' : 'Click or drop files to add attachments'}
                         </p>
+                        <p className="text-xs text-muted-foreground">TXT, Logs, CSV, PDF, Word, Images up to 20MB</p>
                       </div>
                     </div>
                   </div>
@@ -861,7 +873,7 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                       multiple 
                       className="hidden" 
                       onChange={handleFileUpload}
-                      accept="image/*,.pdf,.doc,.docx"
+                      accept=".txt,.log,.text,.csv,.tsv,.json,.md,.pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp,.svg,text/*,image/*"
                     />
                     <Button 
                       variant="ghost" 

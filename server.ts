@@ -221,13 +221,17 @@ async function startServer() {
     "application/msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
     "text/plain",
-    "text/csv"
+    "text/csv",
+    "text/tab-separated-values",
+    "text/markdown",
+    "text/x-log",
+    "application/json"
   ]);
 
   // Allowed file extensions
   const ALLOWED_EXTENSIONS = new Set([
     ".jpg", ".jpeg", ".png", ".gif", ".webp", ".svg", ".bmp", ".tiff",
-    ".pdf", ".doc", ".docx", ".txt", ".csv"
+    ".pdf", ".doc", ".docx", ".txt", ".csv", ".log", ".text", ".tsv", ".json", ".md"
   ]);
 
   // Explicitly prohibited dangerous executable / script extensions
@@ -254,6 +258,8 @@ async function startServer() {
 
       const originalName = req.file.originalname || "attachment";
       const ext = path.extname(originalName).toLowerCase();
+      const rawMime = (req.file.mimetype || "").toLowerCase().trim();
+      const baseMime = rawMime.split(";")[0].trim();
 
       // Check for prohibited executable or script file extensions
       if (PROHIBITED_EXTENSIONS.has(ext)) {
@@ -261,11 +267,20 @@ async function startServer() {
         return res.status(400).json({ error: `File type "${ext}" is not permitted for security reasons.` });
       }
 
-      // Verify that extension and MIME type belong to the allowlist
-      if (!ALLOWED_EXTENSIONS.has(ext) || !ALLOWED_MIME_TYPES.has(req.file.mimetype)) {
-        console.warn(`[Upload API] Rejected unapproved file: ${originalName} (MIME: ${req.file.mimetype}, Ext: ${ext})`);
+      // Check extension allowlist
+      const isAllowedExt = ALLOWED_EXTENSIONS.has(ext);
+
+      // Check MIME type allowlist (allows text/*, images, and octet-stream when extension is approved)
+      const isAllowedMime = 
+        ALLOWED_MIME_TYPES.has(baseMime) ||
+        baseMime.startsWith("text/") ||
+        baseMime.startsWith("image/") ||
+        (isAllowedExt && (baseMime === "application/octet-stream" || baseMime === "application/x-download" || !baseMime));
+
+      if (!isAllowedExt || !isAllowedMime) {
+        console.warn(`[Upload API] Rejected file: ${originalName} (Raw MIME: "${rawMime}", Base MIME: "${baseMime}", Ext: "${ext}")`);
         return res.status(400).json({ 
-          error: "Invalid file type. Allowed formats: images (.png, .jpg, .gif, .webp, .svg), PDF (.pdf), Word (.doc, .docx), and text (.txt, .csv)." 
+          error: `File "${originalName}" is not an accepted format. Allowed formats: Text & Logs (.txt, .log, .csv, .md, .json), PDF (.pdf), Word (.doc, .docx), and Images (.png, .jpg, .webp, .svg, .gif).` 
         });
       }
 
@@ -275,14 +290,14 @@ async function startServer() {
       const timestamp = Date.now();
       const canonicalDestination = `issues/${issueId}/attachments/${timestamp}_${sanitizedBaseName}`;
 
-      console.log(`[Upload API] Storing validated ${sanitizedBaseName} (${req.file.size} bytes) to ${canonicalDestination}`);
+      console.log(`[Upload API] Storing validated ${sanitizedBaseName} (${req.file.size} bytes, MIME: ${baseMime}) to ${canonicalDestination}`);
       
       try {
         const storageInstance = getStorageInstance();
         const fileRef = storageRef(storageInstance, canonicalDestination);
         
         const uploadResult = await uploadBytes(fileRef, new Uint8Array(req.file.buffer), {
-          contentType: req.file.mimetype
+          contentType: baseMime || "text/plain"
         });
         
         const url = await getDownloadURL(uploadResult.ref);

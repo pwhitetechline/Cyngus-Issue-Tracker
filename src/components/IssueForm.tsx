@@ -72,6 +72,11 @@ export function IssueForm({ onSuccess }: IssueFormProps) {
 
   const uploadFiles = async (files: FileList | File[]) => {
     if (uploading) return;
+    if (!auth.currentUser) {
+      toast.error('You must be signed in to upload attachments');
+      return;
+    }
+
     setUploading(true);
     const uploadToastId = toast.loading('Initializing upload...');
 
@@ -92,11 +97,10 @@ export function IssueForm({ onSuccess }: IssueFormProps) {
         formData.append('file', file);
         formData.append('issueId', 'new');
 
-        const headers: Record<string, string> = {};
-        if (auth.currentUser) {
-          const idToken = await auth.currentUser.getIdToken();
-          headers['Authorization'] = `Bearer ${idToken}`;
-        }
+        const idToken = await auth.currentUser.getIdToken();
+        const headers: Record<string, string> = {
+          'Authorization': `Bearer ${idToken}`
+        };
 
         try {
           const response = await fetch('/api/upload', {
@@ -106,8 +110,8 @@ export function IssueForm({ onSuccess }: IssueFormProps) {
           });
 
           if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.details || errorData.error || 'Upload failed');
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.error || errorData.details || `Upload failed (Status ${response.status})`);
           }
 
           const result = await response.json();
@@ -115,16 +119,15 @@ export function IssueForm({ onSuccess }: IssueFormProps) {
           console.log(`[Upload] ${file.name} successful:`, result.url);
         } catch (err: any) {
           console.error(`[Upload] Error uploading ${file.name}:`, err);
-          toast.error(`Failed to upload ${file.name}: ${err.message}`, { id: uploadToastId });
           throw err;
         }
       }
       
       setAttachments(prev => [...prev, ...uploadedAttachments]);
       toast.success('Files uploaded successfully', { id: uploadToastId });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Upload error:', error);
-      toast.error('Failed to upload files', { id: uploadToastId });
+      toast.error(error?.message || 'Failed to upload files', { id: uploadToastId });
     } finally {
       setUploading(false);
     }
@@ -245,6 +248,13 @@ export function IssueForm({ onSuccess }: IssueFormProps) {
               <div 
                 className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer bg-muted/50 group"
                 onClick={() => document.getElementById('file-upload')?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                    uploadFiles(e.dataTransfer.files);
+                  }
+                }}
               >
                 <input 
                   id="file-upload"
@@ -252,16 +262,16 @@ export function IssueForm({ onSuccess }: IssueFormProps) {
                   multiple 
                   className="hidden" 
                   onChange={handleFileUpload}
-                  accept="image/*,.pdf,.doc,.docx"
+                  accept=".txt,.log,.text,.csv,.tsv,.json,.md,.pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp,.svg,text/*,image/*"
                 />
                 <div className="flex flex-col items-center gap-2">
                   <div className="p-3 bg-card rounded-full shadow-sm group-hover:scale-110 transition-transform">
                     <ImageIcon className="w-6 h-6 text-muted-foreground group-hover:text-primary" />
                   </div>
                   <p className="text-sm font-medium text-muted-foreground">
-                    {uploading ? 'Uploading...' : 'Click or drag to upload screenshots'}
+                    {uploading ? 'Uploading...' : 'Click or drag to upload files'}
                   </p>
-                  <p className="text-xs text-muted-foreground">PNG, JPG, PDF up to 10MB</p>
+                  <p className="text-xs text-muted-foreground">TXT, Logs, CSV, PDF, Word, Images up to 10MB</p>
                 </div>
               </div>
 
