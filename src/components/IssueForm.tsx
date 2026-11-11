@@ -16,8 +16,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/
 import { Badge } from './ui/badge';
 import { X, Plus, Send, Loader2, Image as ImageIcon, Paperclip } from 'lucide-react';
 import { toast } from 'sonner';
-import { auth, storage } from '../lib/firebase';
-import { uploadFileFallback } from '../lib/storageFallback';
+import { auth } from '../lib/firebase';
+import { uploadAttachment } from '../lib/uploadService';
 
 interface IssueFormProps {
   onSuccess: () => void;
@@ -92,35 +92,9 @@ export function IssueForm({ onSuccess }: IssueFormProps) {
         }
 
         toast.message(`Uploading ${file.name}...`, { id: uploadToastId });
-        
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('issueId', 'new');
-
-        const idToken = await auth.currentUser.getIdToken();
-        const headers: Record<string, string> = {
-          'Authorization': `Bearer ${idToken}`
-        };
-
-        try {
-          const response = await fetch('/api/upload', {
-            method: 'POST',
-            headers,
-            body: formData,
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || errorData.details || `Upload failed (Status ${response.status})`);
-          }
-
-          const result = await response.json();
-          uploadedAttachments.push({ name: result.name, url: result.url });
-          console.log(`[Upload] ${file.name} successful:`, result.url);
-        } catch (err: any) {
-          console.error(`[Upload] Error uploading ${file.name}:`, err);
-          throw err;
-        }
+        const result = await uploadAttachment(file, 'new');
+        uploadedAttachments.push(result);
+        console.log(`[Upload] ${file.name} successful:`, result.url);
       }
       
       setAttachments(prev => [...prev, ...uploadedAttachments]);

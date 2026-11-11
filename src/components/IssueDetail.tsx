@@ -51,7 +51,8 @@ import {
   Plus,
   Pencil,
   Save,
-  Download
+  Download,
+  FileText
 } from 'lucide-react';
 import { downloadIssueAsJson } from '../lib/issueExport';
 import { formatDistanceToNow } from 'date-fns';
@@ -77,8 +78,8 @@ import { Label } from './ui/label';
 import { toast } from 'sonner';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Skeleton } from './ui/skeleton';
-import { auth, storage } from '../lib/firebase';
-import { uploadFileFallback } from '../lib/storageFallback';
+import { auth } from '../lib/firebase';
+import { uploadAttachment } from '../lib/uploadService';
 import firebaseConfig from '../../firebase-applet-config.json';
 
 interface IssueDetailProps {
@@ -378,35 +379,9 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
         }
 
         toast.message(`Uploading ${file.name}...`, { id: uploadToastId });
-        
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('issueId', issueId);
-
-        const idToken = await auth.currentUser.getIdToken();
-        const headers: Record<string, string> = {
-          'Authorization': `Bearer ${idToken}`
-        };
-
-        try {
-          const response = await fetch('/api/upload', {
-            method: 'POST',
-            headers,
-            body: formData,
-          });
-
-          if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || errorData.details || `Upload failed (Status ${response.status})`);
-          }
-
-          const result = await response.json();
-          console.log(`[Upload] Finished: ${file.name} -> ${result.url}`);
-          newAttachments.push({ name: result.name, url: result.url });
-        } catch (err: any) {
-          console.error(`[Upload] Error uploading ${file.name}:`, err);
-          throw err;
-        }
+        const result = await uploadAttachment(file, issueId);
+        console.log(`[Upload] Finished: ${file.name} -> ${result.url}`);
+        newAttachments.push({ name: result.name, url: result.url });
       }
 
       console.log('[Upload] Finalizing Firestore update');
@@ -625,8 +600,11 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                               />
                             </div>
                           ) : (
-                            <div className="aspect-video w-full flex items-center justify-center bg-muted">
-                              <Paperclip className="w-8 h-8 text-muted-foreground/50" />
+                            <div className="aspect-video w-full flex flex-col items-center justify-center bg-muted/60 p-4 gap-2">
+                              <FileText className="w-8 h-8 text-primary/70" />
+                              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                                {file.name.split('.').pop() || 'FILE'}
+                              </span>
                             </div>
                           )}
                           <div className="p-3 flex items-center justify-between bg-card">
@@ -637,7 +615,9 @@ export function IssueDetail({ issueId, onBack }: IssueDetailProps) {
                               href={file.url} 
                               target="_blank" 
                               rel="noopener noreferrer"
+                              download={file.name}
                               className="p-1.5 bg-muted rounded-md text-muted-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
+                              title={`Download or view ${file.name}`}
                             >
                               <ExternalLink className="w-3.5 h-3.5" />
                             </a>
